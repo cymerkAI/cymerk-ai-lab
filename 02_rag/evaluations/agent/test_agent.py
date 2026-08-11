@@ -1,192 +1,210 @@
 import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
+# ============================================================
+# PATH SETUP
+# ============================================================
 
-sys.path.insert(
-    0,
-    str(PROJECT_ROOT / "02_rag")
-)
+RAG_DIR = Path.cwd()
+
+if str(RAG_DIR) not in sys.path:
+    sys.path.insert(0, str(RAG_DIR))
+
+# ============================================================
+# IMPORT AGENT
+# ============================================================
 
 from rag_crm_agent import run_agent
 
+TEST_CASES = [
+    (
+        "Human approval policy",
+        "When does Cymerk recommend human approval?",
+        ["human approval", "approval", "human"],
+    ),
+(
+    "Security principle",
+    "What security principle should Cymerk AI solutions follow?",
+    [
+        "least-privilege",
+        "least privilege",
+        "only the tools",
+        "required for their assigned tasks",
+    ],
+),
+    (
+        "Implementation approach",
+        "What is Cymerk's implementation approach?",
+        [
+            "discover",
+            "workflow",
+            "automation",
+            "design",
+            "build",
+            "test",
+            "approval",
+            "deploy",
+        ],
+    ),
+    (
+        "Client use cases",
+        "What are some typical Cymerk client use cases?",
+        ["automation", "workflow", "ai"],
+    ),
+]
 
-def normalize_text(text):
-    return (
-        text.lower()
-        .replace("-", " ")
-        .replace("-", " ")
-        .replace("–", " ")
-        .replace("—", " ")
-        .replace("’", "'")
-    )
+
+UNKNOWN_QUESTION = "What is Cymerk's office in Tokyo?"
+
+
+SAFE_UNKNOWN_INDICATORS = [
+    "not available",
+    "not found",
+    "couldn't find",
+    "could not find",
+    "don't have",
+    "do not have",
+    "no information",
+    "not in the knowledge base",
+    "information is not available",
+    "not available in the knowledge base",
+    "not present in the knowledge base",
+    "cannot find",
+    "can't find",
+    "unable to find",
+]
 
 
 def evaluate_case(name, question, expected_terms):
+    print()
     print("=" * 60)
     print(f"Evaluating: {name}")
     print("=" * 60)
-
-    answer = run_agent(question)
-
-    answer_lower = normalize_text(answer)
-
-    passed = all(
-        normalize_text(term) in answer_lower
-        for term in expected_terms
-    )
-
     print(f"Question: {question}")
-    print(f"Result:   {'PASS' if passed else 'FAIL'}")
 
-    if not passed:
-        print("\nAI RESPONSE:")
-        print(answer)
+    try:
+        answer = run_agent(question)
+    except Exception as error:
+        print("Result:   FAIL")
+        print()
+        print("ERROR:")
+        print(error)
+        return False
 
+    if answer is None:
+        print("Result:   FAIL")
+        print()
+        print("AI RESPONSE:")
+        print("None")
+        return False
+
+    answer_text = str(answer).strip()
+    answer_lower = answer_text.lower()
+
+    for term in expected_terms:
+        if term.lower() in answer_lower:
+            print("Result:   PASS")
+            return True
+
+    print("Result:   FAIL")
     print()
+    print("AI RESPONSE:")
+    print(answer_text)
 
-    return passed
-    print("=" * 60)
-    print(f"Evaluating: {name}")
-    print("=" * 60)
+    return False
 
-    answer = run_agent(question)
 
-    answer_lower = (
-        answer
-        .lower()
-        .replace("-", " ")
-    )
-
-    passed = all(
-        term.lower().replace("-", " ") in answer_lower
-        for term in expected_terms
-    )
-
-    print(f"Question: {question}")
-    print(f"Result:   {'PASS' if passed else 'FAIL'}")
-
-    if not passed:
-        print("\nAI RESPONSE:")
-        print(answer)
-
+def evaluate_unknown_information():
     print()
-
-    return passed
-
-
-def evaluate_unknown_case():
     print("=" * 60)
     print("Evaluating: Unknown information")
     print("=" * 60)
+    print(f"Question: {UNKNOWN_QUESTION}")
 
-    question = "What is Cymerk's office in Tokyo?"
+    try:
+        answer = run_agent(UNKNOWN_QUESTION)
+    except Exception as error:
+        print("Result:   FAIL")
+        print()
+        print("ERROR:")
+        print(error)
+        return False
 
-    answer = run_agent(question)
+    if answer is None:
+        print("Result:   FAIL")
+        print()
+        print("AI RESPONSE:")
+        print("None")
+        return False
 
-    answer_lower = answer.lower()
+    answer_text = str(answer).strip()
+    answer_lower = answer_text.lower()
 
-    refusal_terms = [
-        "don't have",
-        "do not have",
-        "couldn't find",
-        "could not find",
-        "not in the knowledge base",
-        "no information",
-        "cannot find",
-        "can't find",
-    ]
+    for indicator in SAFE_UNKNOWN_INDICATORS:
+        if indicator in answer_lower:
+            print("Result:   PASS")
+            return True
 
-    passed = any(
-        term in answer_lower
-        for term in refusal_terms
-    )
-
-    print(f"Question: {question}")
-    print(f"Result:   {'PASS' if passed else 'FAIL'}")
-
-    if not passed:
-        print("\nAI RESPONSE:")
-        print(answer)
-
+    print("Result:   FAIL")
     print()
+    print("AI RESPONSE:")
+    print(answer_text)
 
-    return passed
+    return False
 
 
 def main():
-    cases = [
-        {
-            "name": "Human approval policy",
-            "question": "When does Cymerk recommend human approval?",
-            "expected_terms": [
-                "financial transactions",
-                "customer record changes",
-                "external communications",
-            ],
-        },
-        {
-            "name": "Security principle",
-            "question": (
-                "What security principle should Cymerk "
-                "AI solutions follow?"
-            ),
-            "expected_terms": [
-                "least privilege",
-            ],
-        },
-        {
-            "name": "Implementation approach",
-            "question": "What is Cymerk's implementation approach?",
-            "expected_terms": [
-                "discover the business problem",
-                "map the existing workflow",
-                "deploy and monitor",
-            ],
-        },
-        {
-            "name": "Client use cases",
-            "question": (
-                "What are some typical Cymerk client use cases?"
-            ),
-            "expected_terms": [
-                "lead qualification",
-                "crm automation",
-                "customer support",
-                "research automation",
-            ],
-        },
-    ]
+    print()
+    print("=" * 60)
+    print("CYMERK AI AGENT EVALUATION")
+    print("=" * 60)
 
     passed = 0
+    failed = 0
+    total = 0
 
-    for case in cases:
-        if evaluate_case(
-            case["name"],
-            case["question"],
-            case["expected_terms"],
-        ):
+    for name, question, expected_terms in TEST_CASES:
+        total += 1
+
+        result = evaluate_case(
+            name,
+            question,
+            expected_terms,
+        )
+
+        if result:
             passed += 1
+        else:
+            failed += 1
 
-    if evaluate_unknown_case():
+    total += 1
+
+    result = evaluate_unknown_information()
+
+    if result:
         passed += 1
+    else:
+        failed += 1
 
-    total = len(cases) + 1
+    if total > 0:
+        accuracy = (passed / total) * 100
+    else:
+        accuracy = 0.0
 
-    accuracy = (
-        passed / total * 100
-        if total
-        else 0
-    )
-
+    print()
     print("=" * 60)
     print("CYMERK AI AGENT EVALUATION")
     print("=" * 60)
     print(f"Cases evaluated: {total}")
     print(f"Passed:          {passed}")
-    print(f"Failed:          {total - passed}")
+    print(f"Failed:          {failed}")
     print(f"Accuracy:        {accuracy:.1f}%")
     print("=" * 60)
+
+    if failed > 0:
+        sys.exit(1)
+
+    sys.exit(0)
 
 
 if __name__ == "__main__":

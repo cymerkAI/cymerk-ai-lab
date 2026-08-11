@@ -11,10 +11,8 @@ from openai import OpenAI
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
-sys.path.insert(
-    0,
-    str(PROJECT_ROOT),
-)
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 
 # ============================================================
@@ -109,7 +107,7 @@ AGENT_INSTRUCTIONS = (
     "You are the Cymerk AI agent. "
 
     "For questions about Cymerk company information, "
-    "always use the search_knowledge tool. "
+    "always use the search_knowledge tool before answering. "
 
     "The Cymerk knowledge base is authoritative. "
 
@@ -121,11 +119,8 @@ AGENT_INSTRUCTIONS = (
     "say that the information is not available in the "
     "Cymerk knowledge base. "
 
-    "Do not repeatedly search for information when "
-    "the knowledge base returns no results. "
-
     "When relevant information is returned, answer "
-    "the original question directly. "
+    "the original question directly using that information. "
 
     "For implementation approach questions, use the "
     "Implementation Approach section and provide "
@@ -137,8 +132,8 @@ AGENT_INSTRUCTIONS = (
     "For human approval questions, use the "
     "Human Approval section. "
 
-    "For security questions, use the security "
-    "principle from the knowledge base. "
+    "For security questions, use the Security section "
+    "and specifically identify the least-privilege principle. "
 
     "Use create_lead only when the user explicitly "
     "asks to create a CRM lead. "
@@ -161,15 +156,35 @@ def search_knowledge_tool(query):
     retrieval reliability.
     """
 
-    original_query = query
-
     normalized_query = query.lower().strip()
+
+    # --------------------------------------------------------
+    # Security
+    # --------------------------------------------------------
+
+    if (
+        "security" in normalized_query
+        or "secure" in normalized_query
+        or "privacy" in normalized_query
+        or "least privilege" in normalized_query
+        or "least-privilege" in normalized_query
+        or "confidential" in normalized_query
+        or "authorization" in normalized_query
+        or "security principle" in normalized_query
+    ):
+        query = (
+            "Cymerk security principle "
+            "least privilege "
+            "least-privilege "
+            "tools data authorization "
+            "confidential information"
+        )
 
     # --------------------------------------------------------
     # Implementation approach
     # --------------------------------------------------------
 
-    if (
+    elif (
         "implementation" in normalized_query
         or "implement" in normalized_query
         or "deployment approach" in normalized_query
@@ -219,7 +234,6 @@ def search_knowledge_tool(query):
     # --------------------------------------------------------
 
     if not result.get("results"):
-
         return json.dumps(
             {
                 "success": True,
@@ -286,6 +300,7 @@ def run_agent(user_message):
         instructions=AGENT_INSTRUCTIONS,
         input=user_message,
         tools=TOOLS,
+        tool_choice="required",
     )
 
     while True:
@@ -401,6 +416,13 @@ def run_agent(user_message):
 
                 "If relevant information is present, "
                 "use it directly. "
+
+                "For a Security question, if the retrieved "
+                "Security section states least-privilege, "
+                "explain that Cymerk follows the "
+                "least-privilege principle: agents should "
+                "only have access to the tools and data "
+                "required for their assigned tasks. "
 
                 "For an Implementation Approach question, "
                 "give the eight stages from the retrieved "
