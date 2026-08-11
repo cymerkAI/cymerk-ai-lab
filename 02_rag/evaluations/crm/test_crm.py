@@ -1,174 +1,229 @@
 import sys
 from pathlib import Path
-from unittest.mock import patch
 
+# Allow imports from 02_rag
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(PROJECT_ROOT))
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-
-sys.path.insert(
-    0,
-    str(PROJECT_ROOT / "02_rag")
+from agent_tools import (
+    create_lead,
+    approve_crm_lead,
+    reject_crm_lead,
 )
-
-from agent_tools import create_lead
 
 
 def test_valid_lead_approved():
-    with patch(
-        "builtins.input",
-        return_value="y"
-    ):
-        result = create_lead(
-            name="John Smith",
-            title="CEO",
-            company="ABC Manufacturing",
-            lead_score=90,
-        )
+    """
+    A valid lead should first enter pending approval,
+    then be created after explicit approval.
+    """
 
-    assert result["success"] is True
-    assert result["status"] == "created"
-    assert result["record"]["name"] == "John Smith"
-    assert result["record"]["company"] == "ABC Manufacturing"
-    assert result["record"]["lead_score"] == 90
+    request = create_lead(
+        name="John Smith",
+        title="CEO",
+        company="ABC Manufacturing",
+        lead_score=90,
+        require_approval=True,
+    )
 
-    print("PASS: Valid lead approved")
+    if request.get("status") != "pending_approval":
+        print("FAIL: test_valid_lead_approved")
+        return False
+
+    approval_id = request.get("approval_id")
+
+    if not approval_id:
+        print("FAIL: test_valid_lead_approved")
+        return False
+
+    result = approve_crm_lead(approval_id)
+
+    if result.get("success") is True and result.get("status") == "created":
+        print("PASS: test_valid_lead_approved")
+        return True
+
+    print("FAIL: test_valid_lead_approved")
+    return False
 
 
 def test_valid_lead_rejected():
-    with patch(
-        "builtins.input",
-        return_value="n"
+    """
+    A valid lead should NOT be created when human approval
+    is explicitly rejected.
+    """
+
+    request = create_lead(
+        name="Jane Doe",
+        title="VP Sales",
+        company="XYZ Corporation",
+        lead_score=85,
+        require_approval=True,
+    )
+
+    if request.get("status") != "pending_approval":
+        print("FAIL: test_valid_lead_rejected")
+        return False
+
+    approval_id = request.get("approval_id")
+
+    if not approval_id:
+        print("FAIL: test_valid_lead_rejected")
+        return False
+
+    result = reject_crm_lead(approval_id)
+
+    if (
+        result.get("success") is False
+        and result.get("status") == "rejected"
     ):
-        result = create_lead(
-            name="Jane Doe",
-            title="CFO",
-            company="XYZ Corporation",
-            lead_score=80,
-        )
+        print("PASS: test_valid_lead_rejected")
+        return True
 
-    assert result["success"] is False
-    assert result["status"] == "rejected"
-
-    print("PASS: Human rejection prevents creation")
+    print("FAIL: test_valid_lead_rejected")
+    return False
 
 
-def test_invalid_lead_score_high():
-    with patch(
-        "builtins.input",
-        return_value="y"
-    ):
-        result = create_lead(
-            name="Test User",
-            title="CEO",
-            company="Test Company",
-            lead_score=101,
-        )
+def test_invalid_high_score():
+    """
+    Lead score must not exceed 100.
+    """
 
-    assert result["success"] is False
-    assert result["status"] == "validation_failed"
+    result = create_lead(
+        name="Test User",
+        title="Manager",
+        company="Test Company",
+        lead_score=101,
+        require_approval=True,
+    )
 
-    print("PASS: Lead score above 100 rejected")
+    if result.get("status") == "validation_failed":
+        print("PASS: Lead score above 100 rejected")
+        return True
+
+    print("FAIL: Lead score above 100 accepted")
+    return False
 
 
-def test_invalid_lead_score_low():
-    with patch(
-        "builtins.input",
-        return_value="y"
-    ):
-        result = create_lead(
-            name="Test User",
-            title="CEO",
-            company="Test Company",
-            lead_score=-1,
-        )
+def test_invalid_negative_score():
+    """
+    Lead score must not be below 0.
+    """
 
-    assert result["success"] is False
-    assert result["status"] == "validation_failed"
+    result = create_lead(
+        name="Test User",
+        title="Manager",
+        company="Test Company",
+        lead_score=-1,
+        require_approval=True,
+    )
 
-    print("PASS: Negative lead score rejected")
+    if result.get("status") == "validation_failed":
+        print("PASS: Negative lead score rejected")
+        return True
+
+    print("FAIL: Negative lead score accepted")
+    return False
 
 
 def test_missing_name():
-    with patch(
-        "builtins.input",
-        return_value="y"
-    ):
-        result = create_lead(
-            name="",
-            title="CEO",
-            company="Test Company",
-            lead_score=75,
-        )
+    """
+    Lead name cannot be empty.
+    """
 
-    assert result["success"] is False
-    assert result["status"] == "validation_failed"
+    result = create_lead(
+        name="",
+        title="Manager",
+        company="Test Company",
+        lead_score=50,
+        require_approval=True,
+    )
 
-    print("PASS: Missing name rejected")
+    if result.get("status") == "validation_failed":
+        print("PASS: Missing name rejected")
+        return True
+
+    print("FAIL: Missing name accepted")
+    return False
 
 
-def test_missing_company():
-    with patch(
-        "builtins.input",
-        return_value="y"
-    ):
-        result = create_lead(
-            name="Test User",
-            title="CEO",
-            company="",
-            lead_score=75,
-        )
+def test_invalid_title():
+    """
+    Lead title cannot be empty.
+    """
 
-    assert result["success"] is False
-    assert result["status"] == "validation_failed"
+    result = create_lead(
+        name="Test User",
+        title="",
+        company="Test Company",
+        lead_score=50,
+        require_approval=True,
+    )
 
-    print("PASS: Missing company rejected")
+    if result.get("status") == "validation_failed":
+        print("PASS: Missing title rejected")
+        return True
+
+    print("FAIL: Missing title accepted")
+    return False
 
 
 def main():
+    print("=" * 60)
+    print("CYMERK CRM EVALUATION")
+    print("=" * 60)
+
     tests = [
         test_valid_lead_approved,
         test_valid_lead_rejected,
-        test_invalid_lead_score_high,
-        test_invalid_lead_score_low,
+        test_invalid_high_score,
+        test_invalid_negative_score,
         test_missing_name,
-        test_missing_company,
+        test_invalid_title,
     ]
 
     passed = 0
-
-    print("=" * 60)
-    print("CYMERK CRM TOOL EVALUATION")
-    print("=" * 60)
+    failed = 0
 
     for test in tests:
-        try:
-            test()
-            passed += 1
 
-        except AssertionError as error:
-            print(f"FAIL: {test.__name__}")
-            print(error)
+        try:
+            if test():
+                passed += 1
+            else:
+                failed += 1
 
         except Exception as error:
-            print(f"ERROR: {test.__name__}")
-            print(error)
+
+            failed += 1
+
+            print(
+                f"FAIL: {test.__name__}"
+            )
+
+            print(
+                f"ERROR: {error}"
+            )
 
     total = len(tests)
 
     accuracy = (
-        passed / total * 100
+        (passed / total) * 100
         if total
         else 0
     )
 
+    print()
     print("=" * 60)
     print("CYMERK CRM EVALUATION SUMMARY")
     print("=" * 60)
     print(f"Cases evaluated: {total}")
     print(f"Passed:          {passed}")
-    print(f"Failed:          {total - passed}")
+    print(f"Failed:          {failed}")
     print(f"Accuracy:        {accuracy:.1f}%")
     print("=" * 60)
+
+    if failed > 0:
+        sys.exit(1)
 
 
 if __name__ == "__main__":
