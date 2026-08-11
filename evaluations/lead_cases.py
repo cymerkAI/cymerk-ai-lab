@@ -1,0 +1,38 @@
+LEAD_CASES = [
+    {
+        "id": "lead_001",
+        "name": "John Smith",
+        "title": "CEO",
+        "company": "ABC Manufacturing",
+        "location": "Boston",
+        "interest": "AI automation and process optimization",
+        "expected_priority": "high",
+    },
+    {
+        "id": "lead_002",
+        "name": "Sarah Johnson",
+        "title": "Student",
+        "company": "",
+        "location": "Boston",
+        "interest": "Learning about AI",
+        "expected_priority": "low",
+    },
+    {
+        "id": "lead_003",
+        "name": "Michael Brown",
+        "title": "Operations Director",
+        "company": "XYZ Logistics",
+        "location": "New York",
+        "interest": "Automating repetitive operational workflows",
+        "expected_priority": "high",
+    },
+    {
+        "id": "lead_004",
+        "name": "Lisa Davis",
+        "title": "Marketing Manager",
+        "company": "GrowthCo",
+        "location": "Chicago",
+        "interest": "Interested in learning more",
+        "expected_priority": "medium",
+    },
+]

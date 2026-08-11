@@ -1,0 +1,80 @@
+{"timestamp": "2026-08-11T15:39:30.729893+00:00", "event_type": "test_event", "status": "success", "details": {"message": "Audit logger initialized."}}
+{"timestamp": "2026-08-11T15:39:35.014185+00:00", "event_type": "test_event", "status": "success", "details": {"message": "Audit logger initialized."}}
+{"timestamp": "2026-08-11T15:52:05.924458+00:00", "event_type": "approval_requested", "status": "pending", "details": {"action": "create_crm_lead", "company": "ABC Manufacturing"}}
+{"timestamp": "2026-08-11T15:52:05.925695+00:00", "event_type": "approval_granted", "status": "approved", "details": {"action": "create_crm_lead", "company": "ABC Manufacturing"}}
+{"timestamp": "2026-08-11T15:52:05.928202+00:00", "event_type": "crm_created", "status": "success", "details": {"action": "create_crm_lead", "company": "ABC Manufacturing", "lead_score": 90}}
+{"timestamp": "2026-08-11T15:52:05.929694+00:00", "event_type": "approval_requested", "status": "pending", "details": {"action": "create_crm_lead", "company": "XYZ Corporation"}}
+{"timestamp": "2026-08-11T15:52:05.930355+00:00", "event_type": "approval_rejected", "status": "rejected", "details": {"action": "create_crm_lead", "company": "XYZ Corporation"}}
+{"timestamp": "2026-08-11T15:52:05.933005+00:00", "event_type": "crm_validation", "status": "failed", "details": {"reason": "invalid_lead_data", "company": "Test Company"}}
+{"timestamp": "2026-08-11T15:52:05.934054+00:00", "event_type": "crm_validation", "status": "failed", "details": {"reason": "invalid_lead_data", "company": "Test Company"}}
+{"timestamp": "2026-08-11T15:52:05.935033+00:00", "event_type": "crm_validation", "status": "failed", "details": {"reason": "invalid_lead_data", "company": "Test Company"}}
+{"timestamp": "2026-08-11T15:52:05.936134+00:00", "event_type": "crm_validation", "status": "failed", "details": {"reason": "invalid_lead_data", "company": ""}}
+{"timestamp": "2026-08-11T15:57:49.978452+00:00", "event_type": "tool_permission", "status": "allowed", "details": {"tool": "search_knowledge", "requires_approval": false}}
+{"timestamp": "2026-08-11T15:57:49.981116+00:00", "event_type": "tool_permission", "status": "allowed", "details": {"tool": "create_lead", "requires_approval": true}}
+{"timestamp": "2026-08-11T15:57:49.982323+00:00", "event_type": "tool_permission", "status": "blocked", "details": {"tool": "delete_customer", "reason": "tool_not_registered"}}
+{"timestamp": "2026-08-11T16:03:25.376307+00:00", "event_type": "tool_permission", "status": "allowed", "details": {"tool": "search_knowledge", "requires_approval": false}}
+{"timestamp": "2026-08-11T16:03:26.061167+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "When does Cymerk recommend human approval?", "results_returned": 1}}
+{"timestamp": "2026-08-11T16:03:31.527986+00:00", "event_type": "tool_permission", "status": "allowed", "details": {"tool": "search_knowledge", "requires_approval": false}}
+{"timestamp": "2026-08-11T16:03:32.046084+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "What security principle should Cymerk AI solutions follow?", "results_returned": 2}}
+{"timestamp": "2026-08-11T16:03:36.925313+00:00", "event_type": "tool_permission", "status": "allowed", "details": {"tool": "search_knowledge", "requires_approval": false}}
+{"timestamp": "2026-08-11T16:03:37.226407+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "Cymerk implementation approach", "results_returned": 1}}
+{"timestamp": "2026-08-11T16:03:42.767515+00:00", "event_type": "tool_permission", "status": "allowed", "details": {"tool": "search_knowledge", "requires_approval": false}}
+{"timestamp": "2026-08-11T16:03:43.100289+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "typical Cymerk client use cases", "results_returned": 0}}
+{"timestamp": "2026-08-11T16:03:50.128708+00:00", "event_type": "tool_permission", "status": "allowed", "details": {"tool": "search_knowledge", "requires_approval": false}}
+{"timestamp": "2026-08-11T16:03:50.408112+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "Cymerk office in Tokyo address or details", "results_returned": 0}}
+{"timestamp": "2026-08-11T16:15:57.037680+00:00", "event_type": "tool_permission", "status": "allowed", "details": {"tool": "search_knowledge", "requires_approval": false}}
+{"timestamp": "2026-08-11T16:15:57.511828+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "When does Cymerk recommend human approval?", "results_returned": 1}}
+{"timestamp": "2026-08-11T16:16:02.237178+00:00", "event_type": "tool_permission", "status": "allowed", "details": {"tool": "search_knowledge", "requires_approval": false}}
+{"timestamp": "2026-08-11T16:16:02.501444+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "security principle Cymerk AI solutions should follow", "results_returned": 2}}
+{"timestamp": "2026-08-11T16:16:07.964909+00:00", "event_type": "tool_permission", "status": "allowed", "details": {"tool": "search_knowledge", "requires_approval": false}}
+{"timestamp": "2026-08-11T16:16:08.340292+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "What is Cymerk's implementation approach?", "results_returned": 1}}
+{"timestamp": "2026-08-11T16:16:13.951517+00:00", "event_type": "tool_permission", "status": "allowed", "details": {"tool": "search_knowledge", "requires_approval": false}}
+{"timestamp": "2026-08-11T16:16:14.348518+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "Typical Client Use Cases", "results_returned": 1}}
+{"timestamp": "2026-08-11T16:16:19.526417+00:00", "event_type": "tool_permission", "status": "allowed", "details": {"tool": "search_knowledge", "requires_approval": false}}
+{"timestamp": "2026-08-11T16:16:19.892457+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "Cymerk office in Tokyo", "results_returned": 0}}
+{"timestamp": "2026-08-11T16:25:08.812014+00:00", "event_type": "tool_permission", "status": "allowed", "details": {"tool": "search_knowledge", "requires_approval": false}}
+{"timestamp": "2026-08-11T16:25:09.488111+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "When does Cymerk recommend human approval?", "results_returned": 1}}
+{"timestamp": "2026-08-11T16:25:17.855351+00:00", "event_type": "tool_permission", "status": "allowed", "details": {"tool": "search_knowledge", "requires_approval": false}}
+{"timestamp": "2026-08-11T16:25:18.315794+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "security principle Cymerk AI solutions follow", "results_returned": 2}}
+{"timestamp": "2026-08-11T16:25:23.108428+00:00", "event_type": "tool_permission", "status": "allowed", "details": {"tool": "search_knowledge", "requires_approval": false}}
+{"timestamp": "2026-08-11T16:25:24.213539+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "implementation approach", "results_returned": 0}}
+{"timestamp": "2026-08-11T16:25:31.885024+00:00", "event_type": "tool_permission", "status": "allowed", "details": {"tool": "search_knowledge", "requires_approval": false}}
+{"timestamp": "2026-08-11T16:25:32.243899+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "Typical Client Use Cases", "results_returned": 1}}
+{"timestamp": "2026-08-11T16:25:40.524769+00:00", "event_type": "tool_permission", "status": "allowed", "details": {"tool": "search_knowledge", "requires_approval": false}}
+{"timestamp": "2026-08-11T16:25:41.165236+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "Cymerk's office in Tokyo", "results_returned": 0}}
+{"timestamp": "2026-08-11T16:31:44.561991+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "What is Cymerk implementation approach?", "results_returned": 2}}
+{"timestamp": "2026-08-11T16:31:52.947972+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "What is Cymerk office in Tokyo?", "results_returned": 0}}
+{"timestamp": "2026-08-11T16:31:59.469499+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "What is Cymerk office in Tokyo?", "results_returned": 0}}
+{"timestamp": "2026-08-11T16:33:22.185239+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "What is Cymerk implementation approach?", "results_returned": 2}}
+{"timestamp": "2026-08-11T16:33:32.221368+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "What is Cymerk office in Tokyo?", "results_returned": 0}}
+{"timestamp": "2026-08-11T16:33:34.717171+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "What is Cymerk office in Tokyo?", "results_returned": 0}}
+{"timestamp": "2026-08-11T16:34:58.818308+00:00", "event_type": "tool_permission", "status": "allowed", "details": {"tool": "search_knowledge", "requires_approval": false}}
+{"timestamp": "2026-08-11T16:34:59.265160+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "When does Cymerk recommend human approval?", "results_returned": 1}}
+{"timestamp": "2026-08-11T16:35:04.611226+00:00", "event_type": "tool_permission", "status": "allowed", "details": {"tool": "search_knowledge", "requires_approval": false}}
+{"timestamp": "2026-08-11T16:35:04.952028+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "What security principle should Cymerk AI solutions follow?", "results_returned": 2}}
+{"timestamp": "2026-08-11T16:35:10.115355+00:00", "event_type": "tool_permission", "status": "allowed", "details": {"tool": "search_knowledge", "requires_approval": false}}
+{"timestamp": "2026-08-11T16:35:10.557366+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "implementation approach", "results_returned": 0}}
+{"timestamp": "2026-08-11T16:35:17.280696+00:00", "event_type": "tool_permission", "status": "allowed", "details": {"tool": "search_knowledge", "requires_approval": false}}
+{"timestamp": "2026-08-11T16:35:17.653981+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "Typical Client Use Cases", "results_returned": 1}}
+{"timestamp": "2026-08-11T16:35:24.958261+00:00", "event_type": "tool_permission", "status": "allowed", "details": {"tool": "search_knowledge", "requires_approval": false}}
+{"timestamp": "2026-08-11T16:35:25.304595+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "Cymerk office Tokyo", "results_returned": 0}}
+{"timestamp": "2026-08-11T16:44:48.511314+00:00", "event_type": "tool_permission", "status": "allowed", "details": {"tool": "search_knowledge", "requires_approval": false}}
+{"timestamp": "2026-08-11T16:44:49.111661+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "When does Cymerk recommend human approval?", "results_returned": 1}}
+{"timestamp": "2026-08-11T16:44:57.823928+00:00", "event_type": "tool_permission", "status": "allowed", "details": {"tool": "search_knowledge", "requires_approval": false}}
+{"timestamp": "2026-08-11T16:44:58.416206+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "What security principle should Cymerk AI solutions follow?", "results_returned": 2}}
+{"timestamp": "2026-08-11T16:45:04.255457+00:00", "event_type": "tool_permission", "status": "allowed", "details": {"tool": "search_knowledge", "requires_approval": false}}
+{"timestamp": "2026-08-11T16:45:04.929108+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "Implementation Approach", "results_returned": 0}}
+{"timestamp": "2026-08-11T16:45:13.551143+00:00", "event_type": "tool_permission", "status": "allowed", "details": {"tool": "search_knowledge", "requires_approval": false}}
+{"timestamp": "2026-08-11T16:45:13.874482+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "Typical Client Use Cases", "results_returned": 1}}
+{"timestamp": "2026-08-11T16:45:20.234676+00:00", "event_type": "tool_permission", "status": "allowed", "details": {"tool": "search_knowledge", "requires_approval": false}}
+{"timestamp": "2026-08-11T16:45:20.785005+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "What is Cymerk's office in Tokyo?", "results_returned": 0}}
+{"timestamp": "2026-08-11T16:52:09.357686+00:00", "event_type": "tool_permission", "status": "allowed", "details": {"tool": "search_knowledge", "requires_approval": false}}
+{"timestamp": "2026-08-11T16:52:09.858313+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "Cymerk human approval high-impact actions financial transactions customer record changes external communications", "results_returned": 1}}
+{"timestamp": "2026-08-11T16:52:15.442818+00:00", "event_type": "tool_permission", "status": "allowed", "details": {"tool": "search_knowledge", "requires_approval": false}}
+{"timestamp": "2026-08-11T16:52:15.808859+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "security principle", "results_returned": 0}}
+{"timestamp": "2026-08-11T16:52:19.945601+00:00", "event_type": "tool_permission", "status": "allowed", "details": {"tool": "search_knowledge", "requires_approval": false}}
+{"timestamp": "2026-08-11T16:52:20.160780+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "Cymerk implementation approach AI projects stages", "results_returned": 2}}
+{"timestamp": "2026-08-11T16:52:24.331957+00:00", "event_type": "tool_permission", "status": "allowed", "details": {"tool": "search_knowledge", "requires_approval": false}}
+{"timestamp": "2026-08-11T16:52:24.567316+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "Cymerk typical client use cases lead qualification CRM automation customer support document analysis", "results_returned": 2}}
+{"timestamp": "2026-08-11T16:52:29.917189+00:00", "event_type": "tool_permission", "status": "allowed", "details": {"tool": "search_knowledge", "requires_approval": false}}
+{"timestamp": "2026-08-11T16:52:30.347729+00:00", "event_type": "knowledge_search", "status": "success", "details": {"query": "Cymerk office in Tokyo", "results_returned": 0}}

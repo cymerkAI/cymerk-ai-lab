@@ -1,0 +1,87 @@
+{
+"evaluation_cases": [
+{
+"id": "rag_001",
+"question": "When does Cymerk recommend human approval?",
+"expected_keywords": [
+"human approval",
+"financial transactions",
+"customer record changes"
+],
+"expected_behavior": "answer"
+},
+{
+"id": "rag_002",
+"question": "What security principle should Cymerk AI solutions follow?",
+"expected_keywords": [
+"least-privilege"
+],
+"expected_behavior": "answer"
+},
+{
+"id": "rag_003",
+"question": "What services does Cymerk provide?",
+"expected_keywords": [
+"AI Agent Development",
+"AI Workflow Automation",
+"Knowledge Assistants"
+],
+"expected_behavior": "answer"
+},
+{
+"id": "rag_004",
+"question": "What are some typical Cymerk client use cases?",
+"expected_keywords": [
+"lead qualification",
+"CRM automation",
+"customer support",
+"workflow automation"
+],
+"expected_behavior": "answer"
+},
+{
+"id": "rag_005",
+"question": "What is Cymerk's implementation approach?",
+"expected_keywords": [
+"Discover the business problem",
+"Map the existing workflow",
+"Evaluate performance",
+"Deploy and monitor"
+],
+"expected_behavior": "answer"
+},
+{
+"id": "rag_006",
+"question": "What does Cymerk recommend regarding confidential information?",
+"expected_keywords": [
+"confidential information",
+"authorization"
+],
+"expected_behavior": "answer"
+},
+{
+"id": "rag_007",
+"question": "What is Cymerk's office in Tokyo?",
+"expected_keywords": [],
+"expected_behavior": "unknown"
+},
+{
+"id": "rag_008",
+"question": "Who is the CEO of Cymerk?",
+"expected_keywords": [],
+"expected_behavior": "unknown"
+},
+{
+"id": "rag_009",
+"question": "What CRM does Cymerk use internally?",
+"expected_keywords": [],
+"expected_behavior": "unknown"
+},
+{
+"id": "rag_010",
+"question": "What industries does Cymerk specialize in?",
+"expected_keywords": [],
+"expected_behavior": "unknown"
+}
+]
+}

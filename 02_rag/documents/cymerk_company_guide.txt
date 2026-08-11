@@ -1,0 +1,73 @@
+CYMERK AI — COMPANY GUIDE
+
+Company Overview
+
+Cymerk AI provides AI automation, AI agent, workflow automation, and
+business process optimization solutions for organizations seeking to
+improve productivity and operational efficiency.
+
+Core Services
+
+1. AI Agent Development
+
+Cymerk designs and develops AI agents that can analyze information,
+use business tools, retrieve company knowledge, and execute approved
+business workflows.
+
+2. AI Workflow Automation
+
+Cymerk builds automated workflows that connect AI systems with
+business applications, APIs, databases, CRM platforms, and internal
+processes.
+
+3. Knowledge Assistants
+
+Cymerk develops AI knowledge assistants that allow employees to
+search and interact with internal company documents and knowledge.
+
+4. Business Process Optimization
+
+Cymerk analyzes repetitive business processes and identifies
+opportunities for automation, AI augmentation, and process redesign.
+
+Human Approval
+
+Cymerk recommends human approval for high-impact actions such as
+financial transactions, customer record changes, external
+communications, and other actions where incorrect execution could
+create material business risk.
+
+Security
+
+Cymerk AI solutions should follow least-privilege principles.
+Agents should only have access to the tools and data required for
+their assigned tasks.
+
+AI agents should not automatically expose confidential information
+or execute sensitive actions without appropriate authorization.
+
+Typical Client Use Cases
+
+Common use cases include:
+
+- Lead qualification
+- CRM automation
+- Customer support
+- Document analysis
+- Internal knowledge assistants
+- Workflow automation
+- Business process optimization
+- Research automation
+
+Implementation Approach
+
+Cymerk typically approaches AI projects in stages:
+
+1. Discover the business problem.
+2. Map the existing workflow.
+3. Identify automation opportunities.
+4. Design the AI workflow.
+5. Build and test the solution.
+6. Add human approval and security controls.
+7. Evaluate performance.
+8. Deploy and monitor the production system.
