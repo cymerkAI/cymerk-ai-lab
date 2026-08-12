@@ -632,7 +632,6 @@ def create_lead(
     company: str,
     lead_score: int,
     require_approval: bool = True,
-    approval_id: Optional[str] = None,
 ):
     """
     Main CRM tool entry point.
@@ -646,18 +645,7 @@ def create_lead(
     require_approval=False
         -> Creates the CRM record immediately.
 
-    approval_id provided
-        -> Approves and executes an existing request.
     """
-
-    # --------------------------------------------------------
-    # EXISTING APPROVAL
-    # --------------------------------------------------------
-
-    if approval_id is not None:
-        return approve_crm_lead(
-            approval_id
-        )
 
     # --------------------------------------------------------
     # REQUIRE HUMAN APPROVAL
@@ -850,3 +838,4 @@ if __name__ == "__main__":
             indent=2,
         )
     )
+
