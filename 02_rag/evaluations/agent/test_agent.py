@@ -5,10 +5,12 @@ from pathlib import Path
 # PATH SETUP
 # ============================================================
 
-RAG_DIR = Path.cwd()
+CURRENT_FILE = Path(__file__).resolve()
 
-if str(RAG_DIR) not in sys.path:
-    sys.path.insert(0, str(RAG_DIR))
+RAG_ROOT = CURRENT_FILE.parents[2]
+
+if str(RAG_ROOT) not in sys.path:
+    sys.path.insert(0, str(RAG_ROOT))
 
 # ============================================================
 # IMPORT AGENT
@@ -205,7 +207,6 @@ def main():
         sys.exit(1)
 
     sys.exit(0)
-
 
 if __name__ == "__main__":
     main()

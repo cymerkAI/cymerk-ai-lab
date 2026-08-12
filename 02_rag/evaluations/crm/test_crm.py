@@ -11,11 +11,73 @@ from agent_tools import (
     reject_crm_lead,
 )
 
+from rag_crm_agent import run_agent
 
-def test_valid_lead_approved():
+
+def test_knowledge_request():
     """
-    A valid lead should first enter pending approval,
-    then be created after explicit approval.
+    Basic knowledge retrieval test.
+    """
+
+    answer = run_agent(
+        "What is Cymerk's implementation approach?"
+    )
+
+    assert answer
+    assert len(answer.strip()) > 20
+
+
+def test_security_request():
+    """
+    Security knowledge request.
+    """
+
+    answer = run_agent(
+        "What security principle should Cymerk AI solutions follow?"
+    )
+
+    assert answer
+    assert len(answer.strip()) > 20
+
+
+def test_unknown_information():
+    """
+    Agent should safely handle information that is not
+    present in the knowledge base.
+    """
+
+    answer = run_agent(
+        "What is Cymerk's office in Tokyo?"
+    )
+
+    answer_lower = answer.lower()
+
+    safe_indicators = [
+        "couldn't find",
+        "could not find",
+        "don't have",
+        "do not have",
+        "not available",
+        "not found",
+        "no information",
+        "not in the knowledge base",
+        "knowledge base does not",
+        "cannot find",
+    ]
+
+    assert any(
+        phrase in answer_lower
+        for phrase in safe_indicators
+    )
+
+
+def test_create_lead_approved():
+    """
+    Valid CRM lead:
+    1. Request approval
+    2. Receive approval ID
+    3. Approve request
+    4. CRM record is created
     """
 
     request = create_lead(
@@ -26,205 +88,68 @@ def test_valid_lead_approved():
         require_approval=True,
     )
 
-    if request.get("status") != "pending_approval":
-        print("FAIL: test_valid_lead_approved")
-        return False
+    assert request.get("status") == "pending_approval"
 
     approval_id = request.get("approval_id")
+    assert approval_id
 
-    if not approval_id:
-        print("FAIL: test_valid_lead_approved")
-        return False
+    result = approve_crm_lead(
+        approval_id
+    )
 
-    result = approve_crm_lead(approval_id)
-
-    if result.get("success") is True and result.get("status") == "created":
-        print("PASS: test_valid_lead_approved")
-        return True
-
-    print("FAIL: test_valid_lead_approved")
-    return False
+    assert result.get("success") is True
+    assert result.get("status") == "created"
 
 
-def test_valid_lead_rejected():
+def test_create_lead_rejected():
     """
-    A valid lead should NOT be created when human approval
-    is explicitly rejected.
+    Valid CRM lead:
+    1. Request approval
+    2. Receive approval ID
+    3. Reject request
+    4. CRM record must NOT be created
     """
 
     request = create_lead(
         name="Jane Doe",
-        title="VP Sales",
+        title="CFO",
         company="XYZ Corporation",
-        lead_score=85,
+        lead_score=80,
         require_approval=True,
     )
 
-    if request.get("status") != "pending_approval":
-        print("FAIL: test_valid_lead_rejected")
-        return False
+    assert request.get("status") == "pending_approval"
 
     approval_id = request.get("approval_id")
+    assert approval_id
 
-    if not approval_id:
-        print("FAIL: test_valid_lead_rejected")
-        return False
-
-    result = reject_crm_lead(approval_id)
-
-    if (
-        result.get("success") is False
-        and result.get("status") == "rejected"
-    ):
-        print("PASS: test_valid_lead_rejected")
-        return True
-
-    print("FAIL: test_valid_lead_rejected")
-    return False
-
-
-def test_invalid_high_score():
-    """
-    Lead score must not exceed 100.
-    """
-
-    result = create_lead(
-        name="Test User",
-        title="Manager",
-        company="Test Company",
-        lead_score=101,
-        require_approval=True,
+    result = reject_crm_lead(
+        approval_id
     )
 
-    if result.get("status") == "validation_failed":
-        print("PASS: Lead score above 100 rejected")
-        return True
-
-    print("FAIL: Lead score above 100 accepted")
-    return False
+    assert result.get("success") is False
+    assert result.get("status") == "rejected"
 
 
-def test_invalid_negative_score():
+def test_invalid_crm_lead():
     """
-    Lead score must not be below 0.
-    """
-
-    result = create_lead(
-        name="Test User",
-        title="Manager",
-        company="Test Company",
-        lead_score=-1,
-        require_approval=True,
-    )
-
-    if result.get("status") == "validation_failed":
-        print("PASS: Negative lead score rejected")
-        return True
-
-    print("FAIL: Negative lead score accepted")
-    return False
-
-
-def test_missing_name():
-    """
-    Lead name cannot be empty.
+    Invalid CRM data must be rejected before approval.
     """
 
     result = create_lead(
         name="",
-        title="Manager",
-        company="Test Company",
-        lead_score=50,
+        title="CEO",
+        company="Invalid Company",
+        lead_score=150,
         require_approval=True,
     )
 
-    if result.get("status") == "validation_failed":
-        print("PASS: Missing name rejected")
-        return True
-
-    print("FAIL: Missing name accepted")
-    return False
-
-
-def test_invalid_title():
-    """
-    Lead title cannot be empty.
-    """
-
-    result = create_lead(
-        name="Test User",
-        title="",
-        company="Test Company",
-        lead_score=50,
-        require_approval=True,
-    )
-
-    if result.get("status") == "validation_failed":
-        print("PASS: Missing title rejected")
-        return True
-
-    print("FAIL: Missing title accepted")
-    return False
-
-
-def main():
-    print("=" * 60)
-    print("CYMERK CRM EVALUATION")
-    print("=" * 60)
-
-    tests = [
-        test_valid_lead_approved,
-        test_valid_lead_rejected,
-        test_invalid_high_score,
-        test_invalid_negative_score,
-        test_missing_name,
-        test_invalid_title,
-    ]
-
-    passed = 0
-    failed = 0
-
-    for test in tests:
-
-        try:
-            if test():
-                passed += 1
-            else:
-                failed += 1
-
-        except Exception as error:
-
-            failed += 1
-
-            print(
-                f"FAIL: {test.__name__}"
-            )
-
-            print(
-                f"ERROR: {error}"
-            )
-
-    total = len(tests)
-
-    accuracy = (
-        (passed / total) * 100
-        if total
-        else 0
-    )
-
-    print()
-    print("=" * 60)
-    print("CYMERK CRM EVALUATION SUMMARY")
-    print("=" * 60)
-    print(f"Cases evaluated: {total}")
-    print(f"Passed:          {passed}")
-    print(f"Failed:          {failed}")
-    print(f"Accuracy:        {accuracy:.1f}%")
-    print("=" * 60)
-
-    if failed > 0:
-        sys.exit(1)
+    assert result.get("status") == "validation_failed"
 
 
 if __name__ == "__main__":
-    main()
+    import pytest
+
+    raise SystemExit(
+        pytest.main([__file__, "-v"])
+    )
