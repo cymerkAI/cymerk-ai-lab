@@ -3,12 +3,12 @@ from typing import Any, Dict
 from logs.audit_logger import log_event
 
 from approval_store import (
+    initialize_database,
     save_approval_request,
     get_approval_request,
     update_approval_status,
-    list_pending_approvals,
+    list_pending_approvals as store_list_pending_approvals,
 )
-
 
 def request_approval(
     approval_id: str,
@@ -87,7 +87,7 @@ def list_pending_requests() -> Dict[str, Any]:
     Return all currently pending approval requests.
     """
 
-    requests = list_pending_approvals()
+    requests = store_list_pending_approvals()
 
     return {
         "success": True,

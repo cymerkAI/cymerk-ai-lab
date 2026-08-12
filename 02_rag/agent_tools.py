@@ -15,7 +15,7 @@ from approval_store import (
     save_approval_request,
     get_approval_request,
     update_approval_status,
-    list_pending_approvals
+    list_pending_approvals as store_list_pending_approvals,
 )
 
 # ============================================================
@@ -792,14 +792,19 @@ def list_pending_approvals():
     Return all currently pending approval requests.
     """
 
-    requests = list_pending_approvals()
+    requests = store_list_pending_approvals()
 
     return {
         "success": True,
         "count": len(requests),
-        "requests": requests,
+        "approvals": requests,
     }
 
+    return {
+        "success": True,
+        "count": len(requests),
+        "approvals": requests,
+    }
 
 # ============================================================
 # MANUAL TEST
