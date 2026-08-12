@@ -123,3 +123,46 @@ def test_unknown_approval_returns_not_found():
 
     assert result["success"] is False
     assert result["status"] == "not_found"
+
+def test_duplicate_approval_id_is_rejected():
+    approval_id, first = make_approval()
+
+    assert first["success"] is True
+    assert first["status"] == "pending"
+
+    duplicate = request_approval(
+        approval_id=approval_id,
+        action="create_crm_lead",
+        lead={
+            "name": "Another User",
+            "title": "CFO",
+            "company": "Another Company",
+            "lead_score": 95,
+        },
+        created_at="2026-08-11T01:00:00+00:00",
+    )
+
+    assert duplicate["success"] is False
+    assert duplicate["status"] == "already_exists"
+
+    stored = get_approval(approval_id)
+
+    assert stored["success"] is True
+    assert stored["status"] == "pending"
+    assert stored["lead"]["name"] == "Test User"
+    assert stored["lead"]["company"] == "Test Company"
+
+
+def test_approved_request_cannot_be_approved_again():
+    approval_id, _ = make_approval()
+
+    first = approve_request(approval_id)
+
+    assert first["success"] is True
+    assert first["status"] == "approved"
+
+    second = approve_request(approval_id)
+
+    assert second["success"] is False
+    assert second["status"] == "already_resolved"
+    assert second["approval_id"] == approval_id

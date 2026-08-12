@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Any, Dict
 
 from logs.audit_logger import log_event
@@ -10,6 +11,55 @@ from approval_store import (
     list_pending_approvals as store_list_pending_approvals,
 )
 
+
+# ============================================================
+# DATABASE INITIALIZATION
+# ============================================================
+
+initialize_database()
+
+
+# ============================================================
+# INTERNAL HELPERS
+# ============================================================
+
+def _utc_now() -> str:
+    """Return the current UTC timestamp as an ISO-8601 string."""
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _not_found_response(approval_id: str) -> Dict[str, Any]:
+    """Standard response for an unknown approval ID."""
+    return {
+        "success": False,
+        "status": "not_found",
+        "error": (
+            f"Approval request '{approval_id}' "
+            "was not found."
+        ),
+    }
+
+
+def _already_resolved_response(
+    approval_id: str,
+    status: str,
+) -> Dict[str, Any]:
+    """Standard response for an already-resolved approval."""
+    return {
+        "success": False,
+        "status": "already_resolved",
+        "approval_id": approval_id,
+        "error": (
+            f"Approval request is already "
+            f"{status}."
+        ),
+    }
+
+
+# ============================================================
+# REQUEST APPROVAL
+# ============================================================
+
 def request_approval(
     approval_id: str,
     action: str,
@@ -21,7 +71,23 @@ def request_approval(
 
     This function records the request only.
     It does not execute the protected action.
+
+    Approval IDs are immutable identifiers. An existing
+    approval ID cannot be overwritten.
     """
+
+    existing = get_approval_request(approval_id)
+
+    if existing is not None:
+        return {
+            "success": False,
+            "status": "already_exists",
+            "approval_id": approval_id,
+            "error": (
+                f"Approval request '{approval_id}' "
+                "already exists."
+            ),
+        }
 
     save_approval_request(
         approval_id=approval_id,
@@ -48,12 +114,18 @@ def request_approval(
         "approval_id": approval_id,
         "action": action,
         "lead": lead,
+        "created_at": created_at,
+        "resolved_at": None,
         "message": (
             "Human approval is required before "
             "this action can be executed."
         ),
     }
 
+
+# ============================================================
+# GET APPROVAL
+# ============================================================
 
 def get_approval(
     approval_id: str,
@@ -62,25 +134,20 @@ def get_approval(
     Retrieve an approval request by ID.
     """
 
-    request = get_approval_request(
-        approval_id
-    )
+    request = get_approval_request(approval_id)
 
     if request is None:
-        return {
-            "success": False,
-            "status": "not_found",
-            "error": (
-                f"Approval request '{approval_id}' "
-                "was not found."
-            ),
-        }
+        return _not_found_response(approval_id)
 
     return {
         "success": True,
         **request,
     }
 
+
+# ============================================================
+# LIST PENDING APPROVALS
+# ============================================================
 
 def list_pending_requests() -> Dict[str, Any]:
     """
@@ -96,6 +163,10 @@ def list_pending_requests() -> Dict[str, Any]:
     }
 
 
+# ============================================================
+# APPROVE REQUEST
+# ============================================================
+
 def approve_request(
     approval_id: str,
 ) -> Dict[str, Any]:
@@ -103,39 +174,24 @@ def approve_request(
     Approve a pending request.
 
     This changes approval state only.
-    The AI agent must not call this function
-    as part of its own decision-making process.
+    The AI agent must not call this function as part
+    of its own decision-making process.
     """
 
-    request = get_approval_request(
-        approval_id
-    )
+    request = get_approval_request(approval_id)
 
     if request is None:
-        return {
-            "success": False,
-            "status": "not_found",
-            "error": (
-                f"Approval request '{approval_id}' "
-                "was not found."
-            ),
-        }
+        return _not_found_response(approval_id)
 
-    if request["status"] != "pending":
-        return {
-            "success": False,
-            "status": "already_resolved",
-            "error": (
-                f"Approval request is already "
-                f"{request['status']}."
-            ),
-        }
+    current_status = request["status"]
 
-    from datetime import datetime, timezone
+    if current_status != "pending":
+        return _already_resolved_response(
+            approval_id,
+            current_status,
+        )
 
-    resolved_at = datetime.now(
-        timezone.utc
-    ).isoformat()
+    resolved_at = _utc_now()
 
     updated = update_approval_status(
         approval_id=approval_id,
@@ -147,6 +203,7 @@ def approve_request(
         return {
             "success": False,
             "status": "update_failed",
+            "approval_id": approval_id,
             "error": (
                 "Approval status could not be updated."
             ),
@@ -168,10 +225,15 @@ def approve_request(
         "approval_id": approval_id,
         "action": request["action"],
         "lead": request["lead"],
+        "created_at": request["created_at"],
         "resolved_at": resolved_at,
         "message": "Human approval granted.",
     }
 
+
+# ============================================================
+# REJECT REQUEST
+# ============================================================
 
 def reject_request(
     approval_id: str,
@@ -182,35 +244,20 @@ def reject_request(
     No protected action is executed.
     """
 
-    request = get_approval_request(
-        approval_id
-    )
+    request = get_approval_request(approval_id)
 
     if request is None:
-        return {
-            "success": False,
-            "status": "not_found",
-            "error": (
-                f"Approval request '{approval_id}' "
-                "was not found."
-            ),
-        }
+        return _not_found_response(approval_id)
 
-    if request["status"] != "pending":
-        return {
-            "success": False,
-            "status": "already_resolved",
-            "error": (
-                f"Approval request is already "
-                f"{request['status']}."
-            ),
-        }
+    current_status = request["status"]
 
-    from datetime import datetime, timezone
+    if current_status != "pending":
+        return _already_resolved_response(
+            approval_id,
+            current_status,
+        )
 
-    resolved_at = datetime.now(
-        timezone.utc
-    ).isoformat()
+    resolved_at = _utc_now()
 
     updated = update_approval_status(
         approval_id=approval_id,
@@ -222,6 +269,7 @@ def reject_request(
         return {
             "success": False,
             "status": "update_failed",
+            "approval_id": approval_id,
             "error": (
                 "Approval status could not be updated."
             ),
@@ -243,6 +291,7 @@ def reject_request(
         "approval_id": approval_id,
         "action": request["action"],
         "lead": request["lead"],
+        "created_at": request["created_at"],
         "resolved_at": resolved_at,
         "message": (
             "Human approval rejected. "
