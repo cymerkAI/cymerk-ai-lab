@@ -165,4 +165,62 @@ def test_approved_request_cannot_be_approved_again():
 
     assert second["success"] is False
     assert second["status"] == "already_resolved"
+
+def test_approved_request_cannot_be_approved_again():
+    approval_id, _ = make_approval()
+
+    first = approve_request(approval_id)
+
+    assert first["success"] is True
+    assert first["status"] == "approved"
+
+    second = approve_request(approval_id)
+
+    assert second["success"] is False
+    assert second["status"] == "already_resolved"
     assert second["approval_id"] == approval_id
+
+
+def test_approval_cannot_be_created_with_existing_id():
+    approval_id, first = make_approval()
+
+    assert first["success"] is True
+    assert first["status"] == "pending"
+
+    duplicate = request_approval(
+        approval_id=approval_id,
+        action="create_crm_lead",
+        lead={
+            "name": "Different User",
+            "title": "CFO",
+            "company": "Different Company",
+            "lead_score": 50,
+        },
+        created_at="2026-08-12T00:00:00+00:00",
+    )
+
+    assert duplicate["success"] is False
+    assert duplicate["status"] == "already_exists"
+
+    stored = get_approval(approval_id)
+
+    assert stored["lead"]["name"] == "Test User"
+    assert stored["lead"]["company"] == "Test Company"
+
+def test_approval_state_transition_is_terminal():
+    approval_id, _ = make_approval()
+
+    approved = approve_request(approval_id)
+
+    assert approved["success"] is True
+    assert approved["status"] == "approved"
+
+    rejected = reject_request(approval_id)
+
+    assert rejected["success"] is False
+    assert rejected["status"] == "already_resolved"
+
+    approved_again = approve_request(approval_id)
+
+    assert approved_again["success"] is False
+    assert approved_again["status"] == "already_resolved"

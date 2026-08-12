@@ -385,8 +385,11 @@ def approve_crm_lead(
     """
     Approve a pending CRM lead creation request.
 
-    This function performs the actual CRM action
-    only after approval.
+    This function changes approval state only.
+    It does NOT execute the CRM action.
+
+    CRM execution must happen separately through
+    execute_approved_crm_lead().
     """
 
     approval_data = get_approval_request(
@@ -452,11 +455,21 @@ def approve_crm_lead(
 
     resolved_at = utc_timestamp()
 
-    update_approval_status(
+    updated = update_approval_status(
         approval_id=approval_id,
         status="approved",
         resolved_at=resolved_at,
     )
+
+    if not updated:
+        return {
+            "success": False,
+            "status": "update_failed",
+            "approval_id": approval_id,
+            "error": (
+                "Approval status could not be updated."
+            ),
+        }
 
     # --------------------------------------------------------
     # AUDIT APPROVAL
@@ -472,56 +485,19 @@ def approve_crm_lead(
         },
     )
 
-    # --------------------------------------------------------
-    # CREATE CRM RECORD
-    # --------------------------------------------------------
-
-    crm_record = {
-        "name": lead.name,
-        "title": lead.title,
-        "company": lead.company,
-        "lead_score": lead.lead_score,
-        "status": "New",
-    }
-
-    print("\nCRM TOOL EXECUTED")
-    print("-----------------")
-    print(
-        f"Created lead: {lead.name}"
-    )
-    print(
-        f"Company: {lead.company}"
-    )
-    print(
-        f"Lead score: {lead.lead_score}"
-    )
-    print(
-        f"Status: {crm_record['status']}"
-    )
-
-    # --------------------------------------------------------
-    # AUDIT CRM CREATION
-    # --------------------------------------------------------
-
-    log_event(
-        event_type="crm_created",
-        status="success",
-        details={
-            "approval_id": approval_id,
-            "action": "create_crm_lead",
-            "company": lead.company,
-            "lead_score": lead.lead_score,
-        },
-    )
-
     return {
         "success": True,
-        "status": "created",
+        "status": "approved",
         "approval_id": approval_id,
-        "record": crm_record,
+        "action": "create_crm_lead",
+        "lead": lead.model_dump(),
+        "created_at": approval_data["created_at"],
+        "resolved_at": resolved_at,
+        "message": (
+            "Human approval granted. "
+            "CRM execution is now authorized."
+        ),
     }
-
-
 # ============================================================
 # REJECT CRM LEAD
 # ============================================================
@@ -625,6 +601,87 @@ def reject_crm_lead(
 # ============================================================
 # CREATE LEAD
 # ============================================================
+
+def execute_approved_crm_lead(
+    approval_id: str,
+):
+    """
+    Execute a CRM lead creation only after the
+    corresponding approval request has been approved.
+
+    This function does not grant approval.
+    """
+
+    approval_data = get_approval_request(
+        approval_id
+    )
+
+    if approval_data is None:
+        return {
+            "success": False,
+            "status": "not_found",
+            "error": (
+                f"Approval request '{approval_id}' "
+                "was not found."
+            ),
+        }
+
+    if approval_data["status"] != "approved":
+        return {
+            "success": False,
+            "status": "approval_required",
+            "error": (
+                "CRM execution requires an approved "
+                "approval request."
+            ),
+        }
+
+    try:
+        lead = CRMLead(
+            **approval_data["lead"]
+        )
+
+    except ValidationError as error:
+        log_event(
+            event_type="crm_validation",
+            status="failed",
+            details={
+                "approval_id": approval_id,
+                "reason": "stored_lead_invalid",
+            },
+        )
+
+        return {
+            "success": False,
+            "status": "validation_failed",
+            "error": str(error),
+        }
+
+    crm_record = {
+        "name": lead.name,
+        "title": lead.title,
+        "company": lead.company,
+        "lead_score": lead.lead_score,
+        "status": "New",
+    }
+
+    log_event(
+        event_type="crm_created",
+        status="success",
+        details={
+            "approval_id": approval_id,
+            "action": "create_crm_lead",
+            "company": lead.company,
+            "lead_score": lead.lead_score,
+        },
+    )
+
+    return {
+        "success": True,
+        "status": "created",
+        "approval_id": approval_id,
+        "record": crm_record,
+    }
 
 def create_lead(
     name: str,

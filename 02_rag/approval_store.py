@@ -62,7 +62,7 @@ def save_approval_request(
 
         connection.execute(
             """
-            INSERT OR REPLACE INTO approval_requests (
+            INSERT INTO approval_requests (
                 approval_id,
                 action,
                 status,

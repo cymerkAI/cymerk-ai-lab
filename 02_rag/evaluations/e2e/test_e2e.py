@@ -9,6 +9,7 @@ from agent_tools import (
     create_lead,
     approve_crm_lead,
     reject_crm_lead,
+    execute_approved_crm_lead,
 )
 
 from rag_crm_agent import run_agent
@@ -81,11 +82,44 @@ def test_create_lead_approved():
 
     assert approval_id
 
-    result = approve_crm_lead(approval_id)
+    approval = approve_crm_lead(
+        approval_id
+    )
+
+    assert approval.get("success") is True
+    assert approval.get("status") == "approved"
+
+    result = execute_approved_crm_lead(
+        approval_id
+    )
 
     assert result.get("success") is True
     assert result.get("status") == "created"
 
+def test_crm_execution_requires_approval():
+    """CRM execution must not occur before human approval."""
+
+    request = create_lead(
+        name="Approval Test",
+        title="CEO",
+        company="Approval Test Company",
+        lead_score=95,
+        require_approval=True,
+    )
+
+    assert request.get("success") is True
+    assert request.get("status") == "pending_approval"
+
+    approval_id = request.get("approval_id")
+
+    assert approval_id
+
+    result = execute_approved_crm_lead(
+        approval_id
+    )
+
+    assert result.get("success") is False
+    assert result.get("status") == "approval_required"
 
 def test_create_lead_rejected():
     """Valid CRM lead should not be created after rejection."""

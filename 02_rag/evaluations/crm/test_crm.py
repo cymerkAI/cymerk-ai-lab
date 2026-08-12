@@ -9,6 +9,7 @@ from agent_tools import (
     create_lead,
     approve_crm_lead,
     reject_crm_lead,
+    execute_approved_crm_lead,
 )
 
 from rag_crm_agent import run_agent
@@ -77,7 +78,8 @@ def test_create_lead_approved():
     1. Request approval
     2. Receive approval ID
     3. Approve request
-    4. CRM record is created
+    4. Execute approved CRM action
+    5. CRM record is created
     """
 
     request = create_lead(
@@ -93,13 +95,19 @@ def test_create_lead_approved():
     approval_id = request.get("approval_id")
     assert approval_id
 
-    result = approve_crm_lead(
+    approval = approve_crm_lead(
+        approval_id
+    )
+
+    assert approval.get("success") is True
+    assert approval.get("status") == "approved"
+
+    result = execute_approved_crm_lead(
         approval_id
     )
 
     assert result.get("success") is True
     assert result.get("status") == "created"
-
 
 def test_create_lead_rejected():
     """
