@@ -293,7 +293,20 @@ def create_lead_tool(
 def run_agent(user_message):
     """
     Run the Cymerk RAG + CRM agent.
+
+    The agent follows a single tool-execution loop:
+
+        1. Send the user's request to the model.
+        2. Detect any requested function calls.
+        3. Check permissions.
+        4. Execute authorized tools.
+        5. Send tool results back to the model.
+        6. Repeat until the model returns a final answer.
     """
+
+    # --------------------------------------------------------
+    # Initial model request
+    # --------------------------------------------------------
 
     response = client.responses.create(
         model="gpt-5-mini",
@@ -303,107 +316,9 @@ def run_agent(user_message):
         tool_choice="required",
     )
 
-    while True:
-
-        tool_calls = [
-            item
-            for item in response.output
-            if item.type == "function_call"
-        ]
-
-        if not tool_calls:
-            return response.output_text
-
-        tool_outputs = []
-
-        for tool_call in tool_calls:
-
-            arguments = json.loads(
-                tool_call.arguments
-            )
-
-            permission = check_tool_permission(
-                tool_call.name
-            )
-
-            if not permission["allowed"]:
-
-                result = json.dumps(
-                    {
-                        "success": False,
-                        "status": "permission_denied",
-                        "error": permission["reason"],
-                    },
-                    indent=2,
-                )
-
-            elif tool_call.name == "search_knowledge":
-
-                result = search_knowledge_tool(
-                    arguments["query"]
-                )
-
-            elif tool_call.name == "create_lead":
-
-                result = create_lead_tool(
-                    name=arguments["name"],
-                    title=arguments["title"],
-                    company=arguments["company"],
-                    lead_score=arguments["lead_score"],
-                )
-
-            else:
-
-                result = json.dumps(
-                    {
-                        "success": False,
-                        "status": "unknown_tool",
-                        "error": (
-                            f"Unknown tool: "
-                            f"{tool_call.name}"
-                        ),
-                    },
-                    indent=2,
-                )
-
-            tool_outputs.append(
-                {
-                    "type": "function_call_output",
-                    "call_id": tool_call.call_id,
-                    "output": result,
-                }
-            )
-
-        response = client.responses.create(
-            model="gpt-5-mini",
-            instructions=(
-                "Answer the user's original question using "
-                "the tool results. "
-
-                "The tool results are authoritative. "
-
-                "If the search tool returned an empty results "
-                "list, you MUST explicitly state that the "
-                "information is not available in the Cymerk "
-                "knowledge base. "
-
-                "For example: "
-                "\"I couldn't find that information in the "
-                "Cymerk knowledge base.\" "
-
-                "Do not answer an empty retrieval result using "
-                "general knowledge or assumptions. "
-
-                "If relevant information is present, answer "
-                "using only that information. "
-
-                "Do not perform a public web search. "
-                "Do not invent information. "
-                "Do not expose raw JSON or tool calls."
-            ),
-            previous_response_id=response.id,
-            input=tool_outputs,
-        )
+    # --------------------------------------------------------
+    # SINGLE TOOL EXECUTION LOOP
+    # --------------------------------------------------------
 
     while True:
 
@@ -418,7 +333,7 @@ def run_agent(user_message):
         ]
 
         # ----------------------------------------------------
-        # No tool calls
+        # No tool calls = final response
         # ----------------------------------------------------
 
         if not tool_calls:
@@ -427,7 +342,7 @@ def run_agent(user_message):
         tool_outputs = []
 
         # ----------------------------------------------------
-        # Execute each tool
+        # Execute each tool call
         # ----------------------------------------------------
 
         for tool_call in tool_calls:
@@ -496,6 +411,10 @@ def run_agent(user_message):
                     indent=2,
                 )
 
+            # ------------------------------------------------
+            # Package tool result
+            # ------------------------------------------------
+
             tool_outputs.append(
                 {
                     "type": "function_call_output",
@@ -505,7 +424,7 @@ def run_agent(user_message):
             )
 
         # ----------------------------------------------------
-        # Send results back to model
+        # Send tool results back to the model
         # ----------------------------------------------------
 
         response = client.responses.create(
@@ -516,8 +435,20 @@ def run_agent(user_message):
 
                 "The tool results are authoritative. "
 
+                "If the search tool returned an empty "
+                "results list, you MUST explicitly state "
+                "that the information is not available "
+                "in the Cymerk knowledge base. "
+
+                "For example: "
+                "\"I couldn't find that information in "
+                "the Cymerk knowledge base.\" "
+
+                "Do not answer an empty retrieval result "
+                "using general knowledge or assumptions. "
+
                 "If relevant information is present, "
-                "use it directly. "
+                "answer using only that information. "
 
                 "For a Security question, if the retrieved "
                 "Security section states least-privilege, "
@@ -533,14 +464,8 @@ def run_agent(user_message):
                 "Do not replace those stages with a "
                 "generic explanation of implementation. "
 
-                "If the search returned no results, "
-                "state that the information is not "
-                "available in the Cymerk knowledge base. "
-
                 "Do not perform a public web search. "
-
                 "Do not invent information. "
-
                 "Do not expose raw JSON or tool calls."
             ),
             previous_response_id=response.id,
