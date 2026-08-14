@@ -2,8 +2,12 @@ import sys
 from pathlib import Path
 
 # Allow imports from 02_rag
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(PROJECT_ROOT))
+
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 
 from agent_tools import (
     create_lead,
@@ -14,6 +18,10 @@ from agent_tools import (
 
 from rag_crm_agent import run_agent
 
+
+# ============================================================
+# KNOWLEDGE TESTS
+# ============================================================
 
 def test_knowledge_request():
     """
@@ -72,9 +80,14 @@ def test_unknown_information():
     )
 
 
+# ============================================================
+# APPROVED CRM WORKFLOW
+# ============================================================
+
 def test_create_lead_approved():
     """
     Valid CRM lead:
+
     1. Request approval
     2. Receive approval ID
     3. Approve request
@@ -87,12 +100,13 @@ def test_create_lead_approved():
         title="CEO",
         company="ABC Manufacturing",
         lead_score=90,
-        require_approval=True,
     )
 
+    assert request.get("success") is True
     assert request.get("status") == "pending_approval"
 
     approval_id = request.get("approval_id")
+
     assert approval_id
 
     approval = approve_crm_lead(
@@ -109,9 +123,20 @@ def test_create_lead_approved():
     assert result.get("success") is True
     assert result.get("status") == "created"
 
+    assert result["record"]["name"] == "John Smith"
+    assert result["record"]["company"] == "ABC Manufacturing"
+    assert result["record"]["lead_score"] == 90
+    assert result["record"]["status"] == "New"
+
+
+# ============================================================
+# REJECTED CRM WORKFLOW
+# ============================================================
+
 def test_create_lead_rejected():
     """
     Valid CRM lead:
+
     1. Request approval
     2. Receive approval ID
     3. Reject request
@@ -123,12 +148,13 @@ def test_create_lead_rejected():
         title="CFO",
         company="XYZ Corporation",
         lead_score=80,
-        require_approval=True,
     )
 
+    assert request.get("success") is True
     assert request.get("status") == "pending_approval"
 
     approval_id = request.get("approval_id")
+
     assert approval_id
 
     result = reject_crm_lead(
@@ -138,6 +164,17 @@ def test_create_lead_rejected():
     assert result.get("success") is False
     assert result.get("status") == "rejected"
 
+    execution = execute_approved_crm_lead(
+        approval_id
+    )
+
+    assert execution.get("success") is False
+    assert execution.get("status") == "approval_required"
+
+
+# ============================================================
+# INVALID CRM DATA
+# ============================================================
 
 def test_invalid_crm_lead():
     """
@@ -149,15 +186,58 @@ def test_invalid_crm_lead():
         title="CEO",
         company="Invalid Company",
         lead_score=150,
-        require_approval=True,
     )
 
+    assert result.get("success") is False
     assert result.get("status") == "validation_failed"
 
+    assert "error" in result
+
+
+# ============================================================
+# APPROVAL BYPASS PROTECTION
+# ============================================================
+
+def test_create_lead_requires_approval():
+    """
+    Creating a CRM lead must always create a pending
+    approval request.
+
+    There is intentionally no require_approval=False
+    bypass anymore.
+    """
+
+    request = create_lead(
+        name="Security Test User",
+        title="CTO",
+        company="Security Test Company",
+        lead_score=95,
+    )
+
+    assert request.get("success") is True
+    assert request.get("status") == "pending_approval"
+
+    approval_id = request.get("approval_id")
+
+    assert approval_id
+
+    execution = execute_approved_crm_lead(
+        approval_id
+    )
+
+    assert execution.get("success") is False
+    assert execution.get("status") == "approval_required"
+
+
+# ============================================================
+# MAIN
+# ============================================================
 
 if __name__ == "__main__":
     import pytest
 
     raise SystemExit(
-        pytest.main([__file__, "-v"])
+        pytest.main(
+            [__file__, "-v"]
+        )
     )

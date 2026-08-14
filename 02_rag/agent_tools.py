@@ -539,8 +539,32 @@ def create_lead(
     title: str,
     company: str,
     lead_score: int,
-    require_approval: bool = True,
 ):
+    """
+    Request creation of a CRM lead.
+
+    This function never creates a CRM record directly.
+
+    The workflow is:
+
+        create_lead()
+            ↓
+        pending approval
+            ↓
+        human approval
+            ↓
+        execute_approved_crm_lead()
+
+    CRM execution is deliberately separated from the
+    agent-facing tool.
+    """
+
+    return request_crm_approval(
+        name=name,
+        title=title,
+        company=company,
+        lead_score=lead_score,
+    )
     """
     Main CRM tool entry point.
 
