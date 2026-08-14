@@ -18,26 +18,70 @@ if str(RAG_ROOT) not in sys.path:
 
 from rag_crm_agent import run_agent
 
-TEST_CASES = [
-    (
-        "Human approval policy",
-        "When does Cymerk recommend human approval?",
-        ["human approval", "approval", "human"],
-    ),
-(
-    "Security principle",
-    "What security principle should Cymerk AI solutions follow?",
-    [
-        "least-privilege",
-        "least privilege",
-        "only the tools",
-        "required for their assigned tasks",
-    ],
-),
-    (
-        "Implementation approach",
-        "What is Cymerk's implementation approach?",
-        [
+
+# ============================================================
+# HUMAN APPROVAL
+# ============================================================
+
+def test_human_approval_policy():
+    answer = run_agent(
+        "When does Cymerk recommend human approval?"
+    )
+
+    assert answer is not None
+
+    answer_lower = str(answer).lower()
+
+    assert any(
+        term in answer_lower
+        for term in [
+            "human approval",
+            "approval",
+            "human",
+        ]
+    )
+
+
+# ============================================================
+# SECURITY
+# ============================================================
+
+def test_security_principle():
+    answer = run_agent(
+        "What security principle should Cymerk AI solutions follow?"
+    )
+
+    assert answer is not None
+
+    answer_lower = str(answer).lower()
+
+    assert any(
+        term in answer_lower
+        for term in [
+            "least-privilege",
+            "least privilege",
+            "only the tools",
+            "required for their assigned tasks",
+        ]
+    )
+
+
+# ============================================================
+# IMPLEMENTATION APPROACH
+# ============================================================
+
+def test_implementation_approach():
+    answer = run_agent(
+        "What is Cymerk's implementation approach?"
+    )
+
+    assert answer is not None
+
+    answer_lower = str(answer).lower()
+
+    assert any(
+        term in answer_lower
+        for term in [
             "discover",
             "workflow",
             "automation",
@@ -46,167 +90,55 @@ TEST_CASES = [
             "test",
             "approval",
             "deploy",
-        ],
-    ),
-    (
-        "Client use cases",
-        "What are some typical Cymerk client use cases?",
-        ["automation", "workflow", "ai"],
-    ),
-]
+        ]
+    )
 
 
-UNKNOWN_QUESTION = "What is Cymerk's office in Tokyo?"
+# ============================================================
+# CLIENT USE CASES
+# ============================================================
+
+def test_client_use_cases():
+    answer = run_agent(
+        "What are some typical Cymerk client use cases?"
+    )
+
+    assert answer is not None
+
+    answer_lower = str(answer).lower()
+
+    assert any(
+        term in answer_lower
+        for term in [
+            "automation",
+            "workflow",
+            "ai",
+        ]
+    )
 
 
-SAFE_UNKNOWN_INDICATORS = [
-    "not available",
-    "not found",
-    "couldn't find",
-    "could not find",
-    "don't have",
-    "do not have",
-    "no information",
-    "not in the knowledge base",
-    "information is not available",
-    "not available in the knowledge base",
-    "not present in the knowledge base",
-    "cannot find",
-    "can't find",
-    "unable to find",
-]
+# ============================================================
+# UNKNOWN INFORMATION
+# ============================================================
 
+def test_unknown_information():
+    answer = run_agent(
+        "What is Cymerk's office in Tokyo?"
+    )
 
-def evaluate_case(name, question, expected_terms):
-    print()
-    print("=" * 60)
-    print(f"Evaluating: {name}")
-    print("=" * 60)
-    print(f"Question: {question}")
+    assert answer is not None
 
-    try:
-        answer = run_agent(question)
-    except Exception as error:
-        print("Result:   FAIL")
-        print()
-        print("ERROR:")
-        print(error)
-        return False
+    answer_lower = str(answer).lower()
 
-    if answer is None:
-        print("Result:   FAIL")
-        print()
-        print("AI RESPONSE:")
-        print("None")
-        return False
-
-    answer_text = str(answer).strip()
-    answer_lower = answer_text.lower()
-
-    for term in expected_terms:
-        if term.lower() in answer_lower:
-            print("Result:   PASS")
-            return True
-
-    print("Result:   FAIL")
-    print()
-    print("AI RESPONSE:")
-    print(answer_text)
-
-    return False
-
-
-def evaluate_unknown_information():
-    print()
-    print("=" * 60)
-    print("Evaluating: Unknown information")
-    print("=" * 60)
-    print(f"Question: {UNKNOWN_QUESTION}")
-
-    try:
-        answer = run_agent(UNKNOWN_QUESTION)
-    except Exception as error:
-        print("Result:   FAIL")
-        print()
-        print("ERROR:")
-        print(error)
-        return False
-
-    if answer is None:
-        print("Result:   FAIL")
-        print()
-        print("AI RESPONSE:")
-        print("None")
-        return False
-
-    answer_text = str(answer).strip()
-    answer_lower = answer_text.lower()
-
-    for indicator in SAFE_UNKNOWN_INDICATORS:
-        if indicator in answer_lower:
-            print("Result:   PASS")
-            return True
-
-    print("Result:   FAIL")
-    print()
-    print("AI RESPONSE:")
-    print(answer_text)
-
-    return False
-
-
-def main():
-    print()
-    print("=" * 60)
-    print("CYMERK AI AGENT EVALUATION")
-    print("=" * 60)
-
-    passed = 0
-    failed = 0
-    total = 0
-
-    for name, question, expected_terms in TEST_CASES:
-        total += 1
-
-        result = evaluate_case(
-            name,
-            question,
-            expected_terms,
-        )
-
-        if result:
-            passed += 1
-        else:
-            failed += 1
-
-    total += 1
-
-    result = evaluate_unknown_information()
-
-    if result:
-        passed += 1
-    else:
-        failed += 1
-
-    if total > 0:
-        accuracy = (passed / total) * 100
-    else:
-        accuracy = 0.0
-
-    print()
-    print("=" * 60)
-    print("CYMERK AI AGENT EVALUATION")
-    print("=" * 60)
-    print(f"Cases evaluated: {total}")
-    print(f"Passed:          {passed}")
-    print(f"Failed:          {failed}")
-    print(f"Accuracy:        {accuracy:.1f}%")
-    print("=" * 60)
-
-    if failed > 0:
-        sys.exit(1)
-
-    sys.exit(0)
-
-if __name__ == "__main__":
-    main()
+    assert any(
+        indicator in answer_lower
+        for indicator in [
+            "not available",
+            "not found",
+            "couldn't find",
+            "could not find",
+            "no information",
+            "not in the knowledge base",
+            "information is not available",
+        ]
+    )
