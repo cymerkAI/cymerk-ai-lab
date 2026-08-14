@@ -10,6 +10,18 @@ TOOL_PERMISSIONS = {
         "allowed": True,
         "requires_approval": True,
     },
+    "approve_crm_lead": {
+        "allowed": True,
+        "requires_approval": False,
+    },
+    "reject_crm_lead": {
+        "allowed": True,
+        "requires_approval": False,
+    },
+    "execute_approved_crm_lead": {
+        "allowed": True,
+        "requires_approval": False,
+    },
 }
 
 

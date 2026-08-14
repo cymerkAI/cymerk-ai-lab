@@ -4,12 +4,11 @@ from pathlib import Path
 
 from openai import OpenAI
 
-
 # ============================================================
 # PROJECT PATH
 # ============================================================
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parent
 
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
@@ -23,6 +22,7 @@ from agent_tools import (
     search_knowledge,
     create_lead,
 )
+
 
 from permissions import check_tool_permission
 
@@ -68,7 +68,11 @@ TOOLS = [
         "name": "create_lead",
         "description": (
             "Create a new CRM lead. "
-            "This action requires human approval."
+            "This action requires human approval. "
+            "The tool creates an approval request first "
+            "and does not create the CRM record until "
+            "approval is granted and the approved action "
+            "is executed separately."
         ),
         "parameters": {
             "type": "object",
@@ -140,6 +144,13 @@ AGENT_INSTRUCTIONS = (
 
     "CRM creation requires human approval. "
 
+    "When create_lead is called, explain that the CRM "
+    "lead is pending human approval and that the "
+    "approval request must be resolved before execution. "
+
+    "Do not claim that a CRM record was created merely "
+    "because an approval request was created. "
+
     "Do not expose raw JSON or tool calls."
 )
 
@@ -159,7 +170,7 @@ def search_knowledge_tool(query):
     normalized_query = query.lower().strip()
 
     # --------------------------------------------------------
-    # Security
+    # SECURITY
     # --------------------------------------------------------
 
     if (
@@ -181,7 +192,7 @@ def search_knowledge_tool(query):
         )
 
     # --------------------------------------------------------
-    # Implementation approach
+    # IMPLEMENTATION APPROACH
     # --------------------------------------------------------
 
     elif (
@@ -195,7 +206,7 @@ def search_knowledge_tool(query):
         )
 
     # --------------------------------------------------------
-    # Client use cases
+    # CLIENT USE CASES
     # --------------------------------------------------------
 
     elif (
@@ -210,7 +221,7 @@ def search_knowledge_tool(query):
         )
 
     # --------------------------------------------------------
-    # Human approval
+    # HUMAN APPROVAL
     # --------------------------------------------------------
 
     elif (
@@ -224,13 +235,13 @@ def search_knowledge_tool(query):
         )
 
     # --------------------------------------------------------
-    # Execute search
+    # EXECUTE SEARCH
     # --------------------------------------------------------
 
     result = search_knowledge(query)
 
     # --------------------------------------------------------
-    # Empty result
+    # EMPTY RESULT
     # --------------------------------------------------------
 
     if not result.get("results"):
@@ -247,7 +258,7 @@ def search_knowledge_tool(query):
         )
 
     # --------------------------------------------------------
-    # Return results
+    # RETURN RESULTS
     # --------------------------------------------------------
 
     return json.dumps(
@@ -267,10 +278,12 @@ def create_lead_tool(
     lead_score,
 ):
     """
-    Create a CRM lead.
+    Create a CRM lead approval request.
 
-    Validation, approval, and audit logging are
-    handled by agent_tools.create_lead().
+    Validation, approval creation, and audit logging
+    are handled by agent_tools.create_lead().
+
+    This function does not directly create the CRM record.
     """
 
     result = create_lead(
@@ -293,7 +306,31 @@ def create_lead_tool(
 def run_agent(user_message):
     """
     Run the Cymerk RAG + CRM agent.
+
+    The agent follows a tool-execution loop:
+
+        1. Send the user's request to the model.
+        2. Detect any requested function calls.
+        3. Check permissions.
+        4. Execute authorized tools.
+        5. Send tool results back to the model.
+        6. Repeat until the model returns a final answer.
+
+    CRM approval remains separate from CRM execution.
+
+    create_lead:
+        Creates a pending approval request.
+
+    approve_crm_lead:
+        Is handled outside this agent tool loop.
+
+    execute_approved_crm_lead:
+        Is handled separately after approval.
     """
+
+    # --------------------------------------------------------
+    # INITIAL MODEL REQUEST
+    # --------------------------------------------------------
 
     response = client.responses.create(
         model="gpt-5-mini",
@@ -303,10 +340,14 @@ def run_agent(user_message):
         tool_choice="required",
     )
 
+    # --------------------------------------------------------
+    # SINGLE TOOL EXECUTION LOOP
+    # --------------------------------------------------------
+
     while True:
 
         # ----------------------------------------------------
-        # Find tool calls
+        # FIND TOOL CALLS
         # ----------------------------------------------------
 
         tool_calls = [
@@ -316,7 +357,7 @@ def run_agent(user_message):
         ]
 
         # ----------------------------------------------------
-        # No tool calls
+        # NO TOOL CALLS = FINAL RESPONSE
         # ----------------------------------------------------
 
         if not tool_calls:
@@ -325,7 +366,7 @@ def run_agent(user_message):
         tool_outputs = []
 
         # ----------------------------------------------------
-        # Execute each tool
+        # EXECUTE EACH TOOL CALL
         # ----------------------------------------------------
 
         for tool_call in tool_calls:
@@ -335,7 +376,7 @@ def run_agent(user_message):
             )
 
             # ------------------------------------------------
-            # Permission check
+            # PERMISSION CHECK
             # ------------------------------------------------
 
             permission = check_tool_permission(
@@ -354,7 +395,7 @@ def run_agent(user_message):
                 )
 
             # ------------------------------------------------
-            # Knowledge search
+            # KNOWLEDGE SEARCH
             # ------------------------------------------------
 
             elif tool_call.name == "search_knowledge":
@@ -364,7 +405,7 @@ def run_agent(user_message):
                 )
 
             # ------------------------------------------------
-            # CRM lead creation
+            # CRM LEAD REQUEST
             # ------------------------------------------------
 
             elif tool_call.name == "create_lead":
@@ -377,7 +418,7 @@ def run_agent(user_message):
                 )
 
             # ------------------------------------------------
-            # Unknown tool
+            # UNKNOWN TOOL
             # ------------------------------------------------
 
             else:
@@ -394,6 +435,10 @@ def run_agent(user_message):
                     indent=2,
                 )
 
+            # ------------------------------------------------
+            # PACKAGE TOOL RESULT
+            # ------------------------------------------------
+
             tool_outputs.append(
                 {
                     "type": "function_call_output",
@@ -403,7 +448,7 @@ def run_agent(user_message):
             )
 
         # ----------------------------------------------------
-        # Send results back to model
+        # SEND TOOL RESULTS BACK TO MODEL
         # ----------------------------------------------------
 
         response = client.responses.create(
@@ -414,8 +459,20 @@ def run_agent(user_message):
 
                 "The tool results are authoritative. "
 
+                "If the search tool returned an empty "
+                "results list, you MUST explicitly state "
+                "that the information is not available "
+                "in the Cymerk knowledge base. "
+
+                "For example: "
+                "\"I couldn't find that information in "
+                "the Cymerk knowledge base.\" "
+
+                "Do not answer an empty retrieval result "
+                "using general knowledge or assumptions. "
+
                 "If relevant information is present, "
-                "use it directly. "
+                "answer using only that information. "
 
                 "For a Security question, if the retrieved "
                 "Security section states least-privilege, "
@@ -431,14 +488,21 @@ def run_agent(user_message):
                 "Do not replace those stages with a "
                 "generic explanation of implementation. "
 
-                "If the search returned no results, "
-                "state that the information is not "
-                "available in the Cymerk knowledge base. "
+                "For CRM lead creation, distinguish clearly "
+                "between requesting approval and actually "
+                "creating the CRM record. "
+
+                "If create_lead returns "
+                "\"pending_approval\", state that human "
+                "approval is required before the CRM record "
+                "can be created. "
+
+                "Do not claim that a CRM record was created "
+                "when the tool only created an approval "
+                "request. "
 
                 "Do not perform a public web search. "
-
                 "Do not invent information. "
-
                 "Do not expose raw JSON or tool calls."
             ),
             previous_response_id=response.id,
