@@ -142,3 +142,105 @@ def test_unknown_information():
             "information is not available",
         ]
     )
+def test_unknown_tool_is_blocked_by_permission_layer():
+    """
+    An unregistered tool must be denied by the permission
+    layer rather than executed by the agent.
+    """
+
+    from permissions import check_tool_permission
+
+    result = check_tool_permission(
+        "definitely_not_a_real_tool"
+    )
+
+    assert result["allowed"] is False
+    assert result["reason"] == "Tool is not authorized."
+
+def test_agent_blocks_unauthorized_tool(monkeypatch):
+    """
+    The agent must not execute a tool when the permission
+    layer denies that tool.
+    """
+
+    import rag_crm_agent
+
+    executed = {
+        "value": False
+    }
+
+    def fake_permission(tool_name):
+        return {
+            "allowed": False,
+            "requires_approval": False,
+            "reason": "Tool is not authorized.",
+        }
+
+    def fake_create_lead(**kwargs):
+        executed["value"] = True
+
+        return (
+            '{"success": true, "status": "created"}'
+        )
+
+    monkeypatch.setattr(
+        rag_crm_agent,
+        "check_tool_permission",
+        fake_permission,
+    )
+
+    monkeypatch.setattr(
+        rag_crm_agent,
+        "create_lead_tool",
+        fake_create_lead,
+    )
+
+    class FakeToolCall:
+        type = "function_call"
+        name = "create_lead"
+        arguments = "{}"
+        call_id = "test-call"
+
+    class FirstResponse:
+        output = [
+            FakeToolCall()
+        ]
+        id = "test-response"
+
+    class FinalResponse:
+        output = []
+        output_text = (
+            "The requested tool is not authorized."
+        )
+
+    class FakeClient:
+        class responses:
+
+            call_count = 0
+
+            @staticmethod
+            def create(**kwargs):
+
+                FakeClient.responses.call_count += 1
+
+                if FakeClient.responses.call_count == 1:
+                    return FirstResponse()
+
+                return FinalResponse()
+
+    monkeypatch.setattr(
+        rag_crm_agent,
+        "client",
+        FakeClient(),
+    )
+
+    result = rag_crm_agent.run_agent(
+        "Create a CRM lead."
+    )
+
+    assert executed["value"] is False
+
+    assert (
+        result
+        == "The requested tool is not authorized."
+    )
