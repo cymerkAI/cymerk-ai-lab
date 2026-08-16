@@ -73,7 +73,6 @@ def test_create_lead_approved():
         title="CEO",
         company="ABC Manufacturing",
         lead_score=90,
-        require_approval=True,
     )
 
     assert request.get("status") == "pending_approval"
@@ -104,7 +103,6 @@ def test_crm_execution_requires_approval():
         title="CEO",
         company="Approval Test Company",
         lead_score=95,
-        require_approval=True,
     )
 
     assert request.get("success") is True
@@ -129,7 +127,7 @@ def test_create_lead_rejected():
         title="CFO",
         company="XYZ Corporation",
         lead_score=80,
-        require_approval=True,
+    
     )
 
     assert request.get("status") == "pending_approval"
@@ -152,7 +150,7 @@ def test_invalid_crm_lead():
         title="CEO",
         company="Invalid Company",
         lead_score=150,
-        require_approval=True,
+  
     )
 
     assert result.get("status") == "validation_failed"

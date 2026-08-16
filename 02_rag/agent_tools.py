@@ -10,13 +10,15 @@ from openai import OpenAI
 from pydantic import BaseModel, Field, ValidationError
 
 from logs.audit_logger import log_event
-from approval_store import (
-    initialize_database,
-    save_approval_request,
-    get_approval_request,
-    update_approval_status,
-    list_pending_approvals as store_list_pending_approvals,
+
+from approval_service import (
+    request_approval,
+    approve_request,
+    reject_request,
+    get_approval,
+    list_pending_requests,
 )
+
 
 # ============================================================
 # PROJECT CONFIGURATION
@@ -41,10 +43,6 @@ EMBEDDINGS_PATH = (
     / "retrieval"
     / "embeddings.json"
 )
-
-# Initialize the persistent approval database when this module
-# is imported.
-initialize_database()
 
 
 # ============================================================
@@ -205,7 +203,9 @@ def utc_timestamp() -> str:
     ).isoformat()
 
 
-def _lead_to_dict(lead: CRMLead) -> dict:
+def _lead_to_dict(
+    lead: CRMLead,
+) -> dict:
     """
     Convert a CRMLead model to a serializable dictionary.
     """
@@ -261,6 +261,9 @@ def request_crm_approval(
 
     IMPORTANT:
     This function does NOT create the CRM record.
+
+    Approval business logic is delegated to
+    approval_service.py.
     """
 
     # --------------------------------------------------------
@@ -297,43 +300,21 @@ def request_crm_approval(
     # --------------------------------------------------------
 
     approval_id = str(uuid.uuid4())
-
     created_at = utc_timestamp()
 
-    approval_request = CRMApprovalRequest(
+    approval_result = request_approval(
         approval_id=approval_id,
         action="create_crm_lead",
-        lead=lead,
-        status="pending",
-        created_at=created_at,
-    )
-
-    # --------------------------------------------------------
-    # PERSIST APPROVAL REQUEST
-    # --------------------------------------------------------
-
-    save_approval_request(
-        approval_id=approval_id,
-        action="create_crm_lead",
-        status="pending",
         lead=lead.model_dump(),
         created_at=created_at,
     )
 
     # --------------------------------------------------------
-    # AUDIT
+    # HANDLE APPROVAL SERVICE FAILURE
     # --------------------------------------------------------
 
-    log_event(
-        event_type="approval_requested",
-        status="pending",
-        details={
-            "approval_id": approval_id,
-            "action": "create_crm_lead",
-            "company": lead.company,
-            "lead_score": lead.lead_score,
-        },
-    )
+    if not approval_result.get("success"):
+        return approval_result
 
     # --------------------------------------------------------
     # DISPLAY
@@ -368,6 +349,8 @@ def request_crm_approval(
         "approval_id": approval_id,
         "action": "create_crm_lead",
         "lead": lead.model_dump(),
+        "created_at": created_at,
+        "resolved_at": None,
         "message": (
             "Human approval is required before "
             "the CRM lead can be created."
@@ -385,119 +368,28 @@ def approve_crm_lead(
     """
     Approve a pending CRM lead creation request.
 
-    This function changes approval state only.
-    It does NOT execute the CRM action.
+    Approval state management is delegated entirely to
+    approval_service.py.
+
+    This function does NOT execute the CRM action.
 
     CRM execution must happen separately through
     execute_approved_crm_lead().
     """
 
-    approval_data = get_approval_request(
+    result = approve_request(
         approval_id
     )
 
-    # --------------------------------------------------------
-    # APPROVAL NOT FOUND
-    # --------------------------------------------------------
-
-    if approval_data is None:
-        return {
-            "success": False,
-            "status": "not_found",
-            "error": (
-                f"Approval request '{approval_id}' "
-                "was not found."
-            ),
-        }
-
-    # --------------------------------------------------------
-    # PREVENT DUPLICATE APPROVAL
-    # --------------------------------------------------------
-
-    if approval_data["status"] != "pending":
-        return {
-            "success": False,
-            "status": "already_resolved",
-            "error": (
-                "Approval request is already "
-                f"{approval_data['status']}."
-            ),
-        }
-
-    # --------------------------------------------------------
-    # REBUILD VALIDATED LEAD
-    # --------------------------------------------------------
-
-    try:
-        lead = CRMLead(
-            **approval_data["lead"]
-        )
-
-    except ValidationError as error:
-        log_event(
-            event_type="crm_validation",
-            status="failed",
-            details={
-                "approval_id": approval_id,
-                "reason": "stored_lead_invalid",
-            },
-        )
-
-        return {
-            "success": False,
-            "status": "validation_failed",
-            "error": str(error),
-        }
-
-    # --------------------------------------------------------
-    # UPDATE APPROVAL STATE
-    # --------------------------------------------------------
-
-    resolved_at = utc_timestamp()
-
-    updated = update_approval_status(
-        approval_id=approval_id,
-        status="approved",
-        resolved_at=resolved_at,
-    )
-
-    if not updated:
-        return {
-            "success": False,
-            "status": "update_failed",
-            "approval_id": approval_id,
-            "error": (
-                "Approval status could not be updated."
-            ),
-        }
-
-    # --------------------------------------------------------
-    # AUDIT APPROVAL
-    # --------------------------------------------------------
-
-    log_event(
-        event_type="approval_granted",
-        status="approved",
-        details={
-            "approval_id": approval_id,
-            "action": "create_crm_lead",
-            "company": lead.company,
-        },
-    )
-
-    return {
-        "success": True,
-        "status": "approved",
-        "approval_id": approval_id,
-        "action": "create_crm_lead",
-        "lead": lead.model_dump(),
-        "created_at": approval_data["created_at"],
-        "resolved_at": resolved_at,
-        "message": (
+    if result.get("success"):
+        result["message"] = (
             "Human approval granted. "
             "CRM execution is now authorized."
-        ),
-    }
+        )
+
+    return result
+
+
 # ============================================================
 # REJECT CRM LEAD
 # ============================================================
@@ -508,89 +400,36 @@ def reject_crm_lead(
     """
     Reject a pending CRM lead creation request.
 
+    Approval state management is delegated entirely to
+    approval_service.py.
+
     No CRM record is created.
+
+    The approval service may report that the rejection
+    operation itself succeeded. For the CRM tool contract,
+    however, success=False indicates that the requested
+    CRM creation did not occur because approval was rejected.
     """
 
-    approval_data = get_approval_request(
+    result = reject_request(
         approval_id
     )
 
     # --------------------------------------------------------
-    # APPROVAL NOT FOUND
+    # APPROVAL SERVICE ERROR
     # --------------------------------------------------------
 
-    if approval_data is None:
-        return {
-            "success": False,
-            "status": "not_found",
-            "error": (
-                f"Approval request '{approval_id}' "
-                "was not found."
-            ),
-        }
+    if not result.get("success"):
+        return result
 
     # --------------------------------------------------------
-    # PREVENT DUPLICATE RESOLUTION
+    # CRM ACTION WAS NOT EXECUTED
     # --------------------------------------------------------
-
-    if approval_data["status"] != "pending":
-        return {
-            "success": False,
-            "status": "already_resolved",
-            "error": (
-                "Approval request is already "
-                f"{approval_data['status']}."
-            ),
-        }
-
-    # --------------------------------------------------------
-    # REBUILD LEAD
-    # --------------------------------------------------------
-
-    try:
-        lead = CRMLead(
-            **approval_data["lead"]
-        )
-
-    except ValidationError:
-        lead = None
-
-    # --------------------------------------------------------
-    # UPDATE STATE
-    # --------------------------------------------------------
-
-    resolved_at = utc_timestamp()
-
-    update_approval_status(
-        approval_id=approval_id,
-        status="rejected",
-        resolved_at=resolved_at,
-    )
-
-    # --------------------------------------------------------
-    # AUDIT
-    # --------------------------------------------------------
-
-    log_event(
-        event_type="approval_rejected",
-        status="rejected",
-        details={
-            "approval_id": approval_id,
-            "action": "create_crm_lead",
-            "company": (
-                lead.company
-                if lead is not None
-                else approval_data["lead"].get("company")
-            ),
-        },
-    )
-
-    print("\nCRM ACTION REJECTED")
 
     return {
+        **result,
         "success": False,
         "status": "rejected",
-        "approval_id": approval_id,
         "message": (
             "Human approval was not granted. "
             "No CRM record was created."
@@ -599,7 +438,7 @@ def reject_crm_lead(
 
 
 # ============================================================
-# CREATE LEAD
+# CREATE LEAD AFTER APPROVAL
 # ============================================================
 
 def execute_approved_crm_lead(
@@ -612,33 +451,31 @@ def execute_approved_crm_lead(
     This function does not grant approval.
     """
 
-    approval_data = get_approval_request(
+    approval_result = get_approval(
         approval_id
     )
 
-    if approval_data is None:
-        return {
-            "success": False,
-            "status": "not_found",
-            "error": (
-                f"Approval request '{approval_id}' "
-                "was not found."
-            ),
-        }
+    if not approval_result.get("success"):
+        return approval_result
 
-    if approval_data["status"] != "approved":
+    if approval_result["status"] != "approved":
         return {
             "success": False,
             "status": "approval_required",
+            "approval_id": approval_id,
             "error": (
                 "CRM execution requires an approved "
                 "approval request."
             ),
         }
 
+    # --------------------------------------------------------
+    # REBUILD VALIDATED LEAD
+    # --------------------------------------------------------
+
     try:
         lead = CRMLead(
-            **approval_data["lead"]
+            **approval_result["lead"]
         )
 
     except ValidationError as error:
@@ -654,8 +491,13 @@ def execute_approved_crm_lead(
         return {
             "success": False,
             "status": "validation_failed",
+            "approval_id": approval_id,
             "error": str(error),
         }
+
+    # --------------------------------------------------------
+    # CREATE CRM RECORD
+    # --------------------------------------------------------
 
     crm_record = {
         "name": lead.name,
@@ -664,6 +506,10 @@ def execute_approved_crm_lead(
         "lead_score": lead.lead_score,
         "status": "New",
     }
+
+    # --------------------------------------------------------
+    # AUDIT CRM CREATION
+    # --------------------------------------------------------
 
     log_event(
         event_type="crm_created",
@@ -683,13 +529,42 @@ def execute_approved_crm_lead(
         "record": crm_record,
     }
 
+
+# ============================================================
+# CREATE LEAD
+# ============================================================
+
 def create_lead(
     name: str,
     title: str,
     company: str,
     lead_score: int,
-    require_approval: bool = True,
 ):
+    """
+    Request creation of a CRM lead.
+
+    This function never creates a CRM record directly.
+
+    The workflow is:
+
+        create_lead()
+            ↓
+        pending approval
+            ↓
+        human approval
+            ↓
+        execute_approved_crm_lead()
+
+    CRM execution is deliberately separated from the
+    agent-facing tool.
+    """
+
+    return request_crm_approval(
+        name=name,
+        title=title,
+        company=company,
+        lead_score=lead_score,
+    )
     """
     Main CRM tool entry point.
 
@@ -702,6 +577,8 @@ def create_lead(
     require_approval=False
         -> Creates the CRM record immediately.
 
+    The approval=True path delegates approval state management
+    to approval_service.py.
     """
 
     # --------------------------------------------------------
@@ -799,33 +676,13 @@ def get_approval_status(
 ):
     """
     Retrieve the current status of an approval request.
+
+    Approval state is retrieved through approval_service.py.
     """
 
-    approval_data = get_approval_request(
+    return get_approval(
         approval_id
     )
-
-    if approval_data is None:
-        return {
-            "success": False,
-            "status": "not_found",
-            "error": (
-                f"Approval request '{approval_id}' "
-                "was not found."
-            ),
-        }
-
-    return {
-        "success": True,
-        "status": approval_data["status"],
-        "approval_id": approval_data["approval_id"],
-        "action": approval_data["action"],
-        "lead": approval_data["lead"],
-        "created_at": approval_data["created_at"],
-        "resolved_at": approval_data.get(
-            "resolved_at"
-        ),
-    }
 
 
 # ============================================================
@@ -835,21 +692,21 @@ def get_approval_status(
 def list_pending_approvals():
     """
     Return all currently pending approval requests.
+
+    Approval state is retrieved through approval_service.py.
     """
 
-    requests = store_list_pending_approvals()
+    result = list_pending_requests()
+
+    if not result.get("success"):
+        return result
 
     return {
         "success": True,
-        "count": len(requests),
-        "approvals": requests,
+        "count": result["count"],
+        "approvals": result["requests"],
     }
 
-    return {
-        "success": True,
-        "count": len(requests),
-        "approvals": requests,
-    }
 
 # ============================================================
 # MANUAL TEST
@@ -895,4 +752,3 @@ if __name__ == "__main__":
             indent=2,
         )
     )
-

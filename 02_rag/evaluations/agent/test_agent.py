@@ -18,26 +18,70 @@ if str(RAG_ROOT) not in sys.path:
 
 from rag_crm_agent import run_agent
 
-TEST_CASES = [
-    (
-        "Human approval policy",
-        "When does Cymerk recommend human approval?",
-        ["human approval", "approval", "human"],
-    ),
-(
-    "Security principle",
-    "What security principle should Cymerk AI solutions follow?",
-    [
-        "least-privilege",
-        "least privilege",
-        "only the tools",
-        "required for their assigned tasks",
-    ],
-),
-    (
-        "Implementation approach",
-        "What is Cymerk's implementation approach?",
-        [
+
+# ============================================================
+# HUMAN APPROVAL
+# ============================================================
+
+def test_human_approval_policy():
+    answer = run_agent(
+        "When does Cymerk recommend human approval?"
+    )
+
+    assert answer is not None
+
+    answer_lower = str(answer).lower()
+
+    assert any(
+        term in answer_lower
+        for term in [
+            "human approval",
+            "approval",
+            "human",
+        ]
+    )
+
+
+# ============================================================
+# SECURITY
+# ============================================================
+
+def test_security_principle():
+    answer = run_agent(
+        "What security principle should Cymerk AI solutions follow?"
+    )
+
+    assert answer is not None
+
+    answer_lower = str(answer).lower()
+
+    assert any(
+        term in answer_lower
+        for term in [
+            "least-privilege",
+            "least privilege",
+            "only the tools",
+            "required for their assigned tasks",
+        ]
+    )
+
+
+# ============================================================
+# IMPLEMENTATION APPROACH
+# ============================================================
+
+def test_implementation_approach():
+    answer = run_agent(
+        "What is Cymerk's implementation approach?"
+    )
+
+    assert answer is not None
+
+    answer_lower = str(answer).lower()
+
+    assert any(
+        term in answer_lower
+        for term in [
             "discover",
             "workflow",
             "automation",
@@ -46,167 +90,157 @@ TEST_CASES = [
             "test",
             "approval",
             "deploy",
-        ],
-    ),
-    (
-        "Client use cases",
-        "What are some typical Cymerk client use cases?",
-        ["automation", "workflow", "ai"],
-    ),
-]
+        ]
+    )
 
 
-UNKNOWN_QUESTION = "What is Cymerk's office in Tokyo?"
+# ============================================================
+# CLIENT USE CASES
+# ============================================================
+
+def test_client_use_cases():
+    answer = run_agent(
+        "What are some typical Cymerk client use cases?"
+    )
+
+    assert answer is not None
+
+    answer_lower = str(answer).lower()
+
+    assert any(
+        term in answer_lower
+        for term in [
+            "automation",
+            "workflow",
+            "ai",
+        ]
+    )
 
 
-SAFE_UNKNOWN_INDICATORS = [
-    "not available",
-    "not found",
-    "couldn't find",
-    "could not find",
-    "don't have",
-    "do not have",
-    "no information",
-    "not in the knowledge base",
-    "information is not available",
-    "not available in the knowledge base",
-    "not present in the knowledge base",
-    "cannot find",
-    "can't find",
-    "unable to find",
-]
+# ============================================================
+# UNKNOWN INFORMATION
+# ============================================================
 
+def test_unknown_information():
+    answer = run_agent(
+        "What is Cymerk's office in Tokyo?"
+    )
 
-def evaluate_case(name, question, expected_terms):
-    print()
-    print("=" * 60)
-    print(f"Evaluating: {name}")
-    print("=" * 60)
-    print(f"Question: {question}")
+    assert answer is not None
 
-    try:
-        answer = run_agent(question)
-    except Exception as error:
-        print("Result:   FAIL")
-        print()
-        print("ERROR:")
-        print(error)
-        return False
+    answer_lower = str(answer).lower()
 
-    if answer is None:
-        print("Result:   FAIL")
-        print()
-        print("AI RESPONSE:")
-        print("None")
-        return False
+    assert any(
+        indicator in answer_lower
+        for indicator in [
+            "not available",
+            "not found",
+            "couldn't find",
+            "could not find",
+            "no information",
+            "not in the knowledge base",
+            "information is not available",
+        ]
+    )
+def test_unknown_tool_is_blocked_by_permission_layer():
+    """
+    An unregistered tool must be denied by the permission
+    layer rather than executed by the agent.
+    """
 
-    answer_text = str(answer).strip()
-    answer_lower = answer_text.lower()
+    from permissions import check_tool_permission
 
-    for term in expected_terms:
-        if term.lower() in answer_lower:
-            print("Result:   PASS")
-            return True
+    result = check_tool_permission(
+        "definitely_not_a_real_tool"
+    )
 
-    print("Result:   FAIL")
-    print()
-    print("AI RESPONSE:")
-    print(answer_text)
+    assert result["allowed"] is False
+    assert result["reason"] == "Tool is not authorized."
 
-    return False
+def test_agent_blocks_unauthorized_tool(monkeypatch):
+    """
+    The agent must not execute a tool when the permission
+    layer denies that tool.
+    """
 
+    import rag_crm_agent
 
-def evaluate_unknown_information():
-    print()
-    print("=" * 60)
-    print("Evaluating: Unknown information")
-    print("=" * 60)
-    print(f"Question: {UNKNOWN_QUESTION}")
+    executed = {
+        "value": False
+    }
 
-    try:
-        answer = run_agent(UNKNOWN_QUESTION)
-    except Exception as error:
-        print("Result:   FAIL")
-        print()
-        print("ERROR:")
-        print(error)
-        return False
+    def fake_permission(tool_name):
+        return {
+            "allowed": False,
+            "requires_approval": False,
+            "reason": "Tool is not authorized.",
+        }
 
-    if answer is None:
-        print("Result:   FAIL")
-        print()
-        print("AI RESPONSE:")
-        print("None")
-        return False
+    def fake_create_lead(**kwargs):
+        executed["value"] = True
 
-    answer_text = str(answer).strip()
-    answer_lower = answer_text.lower()
-
-    for indicator in SAFE_UNKNOWN_INDICATORS:
-        if indicator in answer_lower:
-            print("Result:   PASS")
-            return True
-
-    print("Result:   FAIL")
-    print()
-    print("AI RESPONSE:")
-    print(answer_text)
-
-    return False
-
-
-def main():
-    print()
-    print("=" * 60)
-    print("CYMERK AI AGENT EVALUATION")
-    print("=" * 60)
-
-    passed = 0
-    failed = 0
-    total = 0
-
-    for name, question, expected_terms in TEST_CASES:
-        total += 1
-
-        result = evaluate_case(
-            name,
-            question,
-            expected_terms,
+        return (
+            '{"success": true, "status": "created"}'
         )
 
-        if result:
-            passed += 1
-        else:
-            failed += 1
+    monkeypatch.setattr(
+        rag_crm_agent,
+        "check_tool_permission",
+        fake_permission,
+    )
 
-    total += 1
+    monkeypatch.setattr(
+        rag_crm_agent,
+        "create_lead_tool",
+        fake_create_lead,
+    )
 
-    result = evaluate_unknown_information()
+    class FakeToolCall:
+        type = "function_call"
+        name = "create_lead"
+        arguments = "{}"
+        call_id = "test-call"
 
-    if result:
-        passed += 1
-    else:
-        failed += 1
+    class FirstResponse:
+        output = [
+            FakeToolCall()
+        ]
+        id = "test-response"
 
-    if total > 0:
-        accuracy = (passed / total) * 100
-    else:
-        accuracy = 0.0
+    class FinalResponse:
+        output = []
+        output_text = (
+            "The requested tool is not authorized."
+        )
 
-    print()
-    print("=" * 60)
-    print("CYMERK AI AGENT EVALUATION")
-    print("=" * 60)
-    print(f"Cases evaluated: {total}")
-    print(f"Passed:          {passed}")
-    print(f"Failed:          {failed}")
-    print(f"Accuracy:        {accuracy:.1f}%")
-    print("=" * 60)
+    class FakeClient:
+        class responses:
 
-    if failed > 0:
-        sys.exit(1)
+            call_count = 0
 
-    sys.exit(0)
+            @staticmethod
+            def create(**kwargs):
 
-if __name__ == "__main__":
-    main()
+                FakeClient.responses.call_count += 1
+
+                if FakeClient.responses.call_count == 1:
+                    return FirstResponse()
+
+                return FinalResponse()
+
+    monkeypatch.setattr(
+        rag_crm_agent,
+        "client",
+        FakeClient(),
+    )
+
+    result = rag_crm_agent.run_agent(
+        "Create a CRM lead."
+    )
+
+    assert executed["value"] is False
+
+    assert (
+        result
+        == "The requested tool is not authorized."
+    )
