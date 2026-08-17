@@ -19,7 +19,6 @@ from approval_service import (
     list_pending_requests,
 )
 
-
 # ============================================================
 # PROJECT CONFIGURATION
 # ============================================================
@@ -44,10 +43,10 @@ EMBEDDINGS_PATH = (
     / "embeddings.json"
 )
 
-
 # ============================================================
 # RAG SEARCH
 # ============================================================
+
 
 def cosine_similarity(
     vector_a,
@@ -162,6 +161,7 @@ def search_knowledge(
 # CRM MODELS
 # ============================================================
 
+
 class CRMLead(BaseModel):
     """
     Validated CRM lead model.
@@ -193,6 +193,7 @@ class CRMApprovalRequest(BaseModel):
 # UTILITY FUNCTIONS
 # ============================================================
 
+
 def utc_timestamp() -> str:
     """
     Return the current UTC timestamp.
@@ -216,6 +217,7 @@ def _lead_to_dict(
 # ============================================================
 # CRM VALIDATION
 # ============================================================
+
 
 def validate_lead(
     name: str,
@@ -249,6 +251,7 @@ def validate_lead(
 # REQUEST HUMAN APPROVAL
 # ============================================================
 
+
 def request_crm_approval(
     name: str,
     title: str,
@@ -267,7 +270,7 @@ def request_crm_approval(
     """
 
     # --------------------------------------------------------
-    # VALIDATE LEAD
+    # VALIDATE
     # --------------------------------------------------------
 
     valid, result = validate_lead(
@@ -296,20 +299,16 @@ def request_crm_approval(
     lead = result
 
     # --------------------------------------------------------
-    # CREATE IMMUTABLE APPROVAL ID
+    # CREATE APPROVAL REQUEST
     # --------------------------------------------------------
 
     approval_id = str(uuid.uuid4())
     created_at = utc_timestamp()
 
-    # --------------------------------------------------------
-    # REQUEST APPROVAL
-    # --------------------------------------------------------
-
     approval_result = request_approval(
         approval_id=approval_id,
         action="create_crm_lead",
-        lead=_lead_to_dict(lead),
+        lead=lead.model_dump(),
         created_at=created_at,
     )
 
@@ -321,10 +320,10 @@ def request_crm_approval(
         return approval_result
 
     # --------------------------------------------------------
-    # DISPLAY APPROVAL REQUEST
+    # DISPLAY
     # --------------------------------------------------------
 
-    print()
+    print("\n")
     print("=" * 60)
     print("CYMERK HUMAN APPROVAL REQUIRED")
     print("=" * 60)
@@ -356,7 +355,7 @@ def request_crm_approval(
         "status": "pending_approval",
         "approval_id": approval_id,
         "action": "create_crm_lead",
-        "lead": _lead_to_dict(lead),
+        "lead": lead.model_dump(),
         "created_at": created_at,
         "resolved_at": None,
         "message": (
@@ -370,17 +369,17 @@ def request_crm_approval(
 # APPROVE CRM LEAD
 # ============================================================
 
+
 def approve_crm_lead(
     approval_id: str,
 ):
     """
     Approve a pending CRM lead creation request.
 
-    IMPORTANT:
+    Approval state management is delegated entirely to
+    approval_service.py.
 
-    This function ONLY changes approval state.
-
-    It does NOT create the CRM record.
+    This function does NOT execute the CRM action.
 
     CRM execution must happen separately through
     execute_approved_crm_lead().
@@ -403,15 +402,15 @@ def approve_crm_lead(
 # REJECT CRM LEAD
 # ============================================================
 
+
 def reject_crm_lead(
     approval_id: str,
 ):
     """
     Reject a pending CRM lead creation request.
 
-    IMPORTANT:
-
-    This function ONLY changes approval state.
+    Approval state management is delegated entirely to
+    approval_service.py.
 
     No CRM record is created.
     """
@@ -446,37 +445,18 @@ def reject_crm_lead(
 # CREATE LEAD AFTER APPROVAL
 # ============================================================
 
+
 def execute_approved_crm_lead(
     approval_id: str,
 ):
     """
-    Execute CRM lead creation only after the
+    Execute a CRM lead creation only after the
     corresponding approval request has been approved.
 
-    SECURITY GUARANTEE:
-
-        create_lead()
-            |
-            v
-        pending approval
-            |
-            v
-        human approval
-            |
-            v
-        execute_approved_crm_lead()
-            |
-            v
-        CRM record created
-
-    This function does NOT grant approval.
+    This function does not grant approval.
 
     This is the ONLY CRM execution path.
     """
-
-    # --------------------------------------------------------
-    # RETRIEVE APPROVAL STATE
-    # --------------------------------------------------------
 
     approval_result = get_approval(
         approval_id
@@ -484,10 +464,6 @@ def execute_approved_crm_lead(
 
     if not approval_result.get("success"):
         return approval_result
-
-    # --------------------------------------------------------
-    # VERIFY APPROVAL
-    # --------------------------------------------------------
 
     if approval_result["status"] != "approved":
         return {
@@ -501,32 +477,7 @@ def execute_approved_crm_lead(
         }
 
     # --------------------------------------------------------
-    # VERIFY ACTION TYPE
-    # --------------------------------------------------------
-
-    if approval_result.get("action") != "create_crm_lead":
-        log_event(
-            event_type="crm_execution",
-            status="failed",
-            details={
-                "approval_id": approval_id,
-                "reason": "invalid_approval_action",
-                "action": approval_result.get("action"),
-            },
-        )
-
-        return {
-            "success": False,
-            "status": "invalid_action",
-            "approval_id": approval_id,
-            "error": (
-                "Approval request is not authorized "
-                "for CRM lead creation."
-            ),
-        }
-
-    # --------------------------------------------------------
-    # REBUILD AND REVALIDATE LEAD
+    # REBUILD VALIDATED LEAD
     # --------------------------------------------------------
 
     try:
@@ -590,6 +541,7 @@ def execute_approved_crm_lead(
 # CREATE LEAD
 # ============================================================
 
+
 def create_lead(
     name: str,
     title: str,
@@ -599,9 +551,7 @@ def create_lead(
     """
     Request creation of a CRM lead.
 
-    SECURITY MODEL:
-
-    create_lead() NEVER creates a CRM record directly.
+    This function NEVER creates a CRM record directly.
 
     The workflow is:
 
@@ -613,14 +563,8 @@ def create_lead(
             ↓
         execute_approved_crm_lead()
 
-    There is intentionally NO:
-
-        require_approval=False
-
-    bypass.
-
-    There is also no direct CRM execution path exposed
-    through this agent-facing function.
+    CRM execution is deliberately separated from the
+    agent-facing tool.
     """
 
     return request_crm_approval(
@@ -634,6 +578,7 @@ def create_lead(
 # ============================================================
 # GET APPROVAL STATUS
 # ============================================================
+
 
 def get_approval_status(
     approval_id: str,
@@ -653,6 +598,7 @@ def get_approval_status(
 # ============================================================
 # LIST PENDING APPROVALS
 # ============================================================
+
 
 def list_pending_approvals():
     """
@@ -678,6 +624,7 @@ def list_pending_approvals():
 # MANUAL TEST
 # ============================================================
 
+
 if __name__ == "__main__":
 
     print("=" * 60)
@@ -695,8 +642,7 @@ if __name__ == "__main__":
         lead_score=90,
     )
 
-    print()
-    print("APPROVAL REQUEST RESULT")
+    print("\nAPPROVAL REQUEST RESULT")
     print("-----------------------")
 
     print(
@@ -712,8 +658,7 @@ if __name__ == "__main__":
 
     pending = list_pending_approvals()
 
-    print()
-    print("PENDING APPROVALS")
+    print("\nPENDING APPROVALS")
     print("-----------------")
 
     print(
