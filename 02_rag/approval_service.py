@@ -11,14 +11,14 @@ from approval_store import (
     list_pending_approvals as store_list_pending_approvals,
 )
 
+from action_registry import (
+    is_registered_action,
+)
+
 
 # ============================================================
 # CONSTANTS
 # ============================================================
-
-ALLOWED_ACTIONS = {
-    "create_crm_lead",
-}
 
 PENDING_STATUS = "pending"
 APPROVED_STATUS = "approved"
@@ -120,13 +120,16 @@ def request_approval(
 
     Approval IDs are immutable identifiers. An existing
     approval ID cannot be overwritten.
+
+    Action validity is determined exclusively by
+    action_registry.py.
     """
 
     # --------------------------------------------------------
-    # VALIDATE ACTION
+    # VALIDATE ACTION THROUGH ACTION REGISTRY
     # --------------------------------------------------------
 
-    if action not in ALLOWED_ACTIONS:
+    if not is_registered_action(action):
 
         log_event(
             event_type="approval_requested",
@@ -283,7 +286,7 @@ def get_approval(
 
     action = request.get("action")
 
-    if action not in ALLOWED_ACTIONS:
+    if not is_registered_action(action):
 
         log_event(
             event_type="approval_lookup",
@@ -313,6 +316,9 @@ def get_approval(
 def list_pending_requests() -> Dict[str, Any]:
     """
     Return all currently pending approval requests.
+
+    Only actions registered in action_registry.py are
+    returned.
     """
 
     requests = store_list_pending_approvals()
@@ -328,7 +334,7 @@ def list_pending_requests() -> Dict[str, Any]:
         action = request.get("action")
         approval_id = request.get("approval_id")
 
-        if action not in ALLOWED_ACTIONS:
+        if not is_registered_action(action):
 
             log_event(
                 event_type="approval_list",
@@ -395,12 +401,12 @@ def approve_request(
         )
 
     # --------------------------------------------------------
-    # VALIDATE ACTION
+    # VALIDATE ACTION THROUGH ACTION REGISTRY
     # --------------------------------------------------------
 
     action = request.get("action")
 
-    if action not in ALLOWED_ACTIONS:
+    if not is_registered_action(action):
 
         log_event(
             event_type="approval_granted",
@@ -583,12 +589,12 @@ def reject_request(
         )
 
     # --------------------------------------------------------
-    # VALIDATE ACTION
+    # VALIDATE ACTION THROUGH ACTION REGISTRY
     # --------------------------------------------------------
 
     action = request.get("action")
 
-    if action not in ALLOWED_ACTIONS:
+    if not is_registered_action(action):
 
         log_event(
             event_type="approval_rejected",
